@@ -437,7 +437,7 @@ function AlterationItem(itemState, rng) {
 }
 
 function CanAugmentationItem(itemState) {
-  if (itemState.rarity != "magic") {
+  if (itemState.rarity !== "magic") {
     return false;
   }
   if (itemState.corrupted) {
@@ -463,7 +463,7 @@ function AugmentationItem(itemState, rng) {
 }
 
 function CanRegalItem(itemState) {
-  if (itemState.rarity != "magic") {
+  if (itemState.rarity !== "magic") {
     return false;
   }
   if (itemState.corrupted) {
@@ -518,7 +518,7 @@ function AlchemyItem(itemState, rng) {
 }
 
 function CanChaosItem(itemState) {
-  if (itemState.rarity != "rare") {
+  if (itemState.rarity !== "rare") {
     return false;
   }
   if (itemState.corrupted) {
@@ -543,7 +543,7 @@ function ChaosItem(itemState, rng) {
 }
 
 function CanExaltedItem(itemState) {
-  if (itemState.rarity != "rare") {
+  if (itemState.rarity !== "rare") {
     return false;
   }
   if (itemState.corrupted) {
@@ -632,7 +632,7 @@ class TheoryCrafter extends React.Component {
       this.RenderCraftingButton("alch", "Alchemy"),
       this.RenderCraftingButton("chaos", "Chaos"),
       this.RenderCraftingButton("exalt", "Exalted"),
-      <CraftedItem itemState={ this.state.itemState } />
+      <CraftedItem itemState={ this.state.itemState } key="craftedItem" />
     ]
   }
 }
