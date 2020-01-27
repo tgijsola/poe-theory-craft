@@ -32,7 +32,6 @@ export default class TranslationHelper {
 
     static stringformat = function(fmt) {
         const args = Array.prototype.slice.call(arguments, 1);
-        console.log(fmt);
         return fmt.replace(/{(\d+)}/g, (match, number) => {
             return args[0][number];
         });
@@ -51,8 +50,8 @@ export default class TranslationHelper {
 
             for (const translationIdx in translationJson) {
                 const translation = translationJson[translationIdx];
-                const statIdx = translation["ids"].findIndex((x => x == statId));
-                if (statIdx >= 0) {
+                const translationStatIdx = translation["ids"].findIndex((x => x === statId));
+                if (translationStatIdx >= 0) {
                     let translationLine = {};
                     translationLine["tidx"] = translationIdx;
                     const numStatsInTranslation = translation["ids"].length;
@@ -61,18 +60,18 @@ export default class TranslationHelper {
                     if (values)
                         translationLine["values"] = Array(numStatsInTranslation).fill(0);
 
-                    translationLine["mins"][statIdx] = statObj["min"];
-                    translationLine["maxs"][statIdx] = statObj["max"];
+                    translationLine["mins"][translationStatIdx] = statObj["min"];
+                    translationLine["maxs"][translationStatIdx] = statObj["max"];
                     if (values)                    
-                        translationLine["values"][statIdx] = values[statIdx];
+                        translationLine["values"][translationStatIdx] = values[statIdx];
 
                     for (let addlStatIdx in mod["stats"]) {
                         const addlStat = mod["stats"][addlStatIdx];
                         const addlStatId = addlStat["id"];
-                        if (consumedIdxs.has(addlStatId)) {
+                        if (consumedIdxs.has(addlStatIdx)) {
                             continue;
                         }
-                        const addlStatTranslationIdx = translation["ids"].findIndex((x => x == addlStatId));
+                        const addlStatTranslationIdx = translation["ids"].findIndex((x => x === addlStatId));
                         if (addlStatTranslationIdx > 0) {
                             translationLine["mins"][addlStatTranslationIdx] = addlStat["min"];
                             translationLine["maxs"][addlStatTranslationIdx] = addlStat["max"];
@@ -129,12 +128,20 @@ export default class TranslationHelper {
         for (const statIdx in translation["ids"]) {
             const replacementMin = this.ApplyIndexHandlers(rule["index_handlers"][statIdx], line["mins"][statIdx]);
             const replacementMax = this.ApplyIndexHandlers(rule["index_handlers"][statIdx], line["maxs"][statIdx]);
+            let replacementValue = null;
+            if ("values" in line) {
+                replacementValue = this.ApplyIndexHandlers(rule["index_handlers"][statIdx], line["values"][statIdx]);
+            }
+
             let replacementCombined = "";
-            if (replacementMin == replacementMax) {
+            if (replacementMin === replacementMax) {
                 replacementCombined = replacementMin;
             }
             else {
                 replacementCombined = "(" + replacementMin + "-" + replacementMax + ")";
+                if (replacementValue) {
+                    replacementCombined = replacementValue + replacementCombined;
+                }
             }
             replacementStrings[statIdx] = rule["format"][statIdx].replace("#", replacementCombined);
         }
