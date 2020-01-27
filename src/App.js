@@ -326,6 +326,23 @@ function RollRareAffixCount(baseItemId, rng) {
   return 0;
 }
 
+function cloneMods(modArray) {
+  let newArray = Array(modArray.length);
+  for (const oldModIdx in modArray) {
+    newArray[oldModIdx] = { ...modArray[oldModIdx], values : [ ...modArray[oldModIdx].values ]};
+  }
+  return newArray;
+}
+
+function cloneItemState(itemState) {
+  return { 
+    ...itemState, 
+    implicits : cloneMods(itemState.implicits), 
+    corruptions : cloneMods(itemState.corruptions), 
+    affixes : cloneMods(itemState.affixes) 
+  };
+}
+
 function CreateItem(baseItemId, level, rng) {
   let itemState = {
     generatedName : "",
@@ -350,7 +367,7 @@ function CreateItem(baseItemId, level, rng) {
 }
 
 function AddRandomMod(itemState, rng) {
-  let newItemState = { ...itemState };
+  let newItemState = cloneItemState(itemState);
   const validMods = GetValidModsForItem(newItemState);
   const itemTags = GetItemTags(newItemState);
   const weightedModPool = CreateWeightedModPool(validMods, itemTags);
@@ -380,7 +397,7 @@ function ScourItem(itemState, rng) {
   if (!CanScourItem(itemState)) {
     return [false, itemState];
   }
-  return [true, { ...itemState, rarity : "normal", affixes : [] }];
+  return [true, { ...cloneItemState(itemState), rarity : "normal", affixes : [] }];
 }
 
 function CanTransmutationItem(itemState) {
@@ -575,6 +592,8 @@ function CraftingButton(props) {
 class TheoryCrafter extends React.Component {
   constructor(props) {
     super(props);
+    this.history = [];
+    this.historyIdx = 0;
 
     this.testMap = {
       "scour" : CanScourItem,
@@ -600,20 +619,63 @@ class TheoryCrafter extends React.Component {
 
     this.rng = seedrandom();
     const normalItemState = CreateItem("Metadata/Items/Armours/Boots/BootsAtlas1", 100, this.rng);
+    this.state = this.initState(normalItemState);
     const transmuteResult = TransmutationItem(normalItemState, this.rng);
-    this.state = {
-      itemState : transmuteResult[0] ? transmuteResult[1] : normalItemState
+    this.state = this.insertAndCutState(transmuteResult[1]);
+  }
+
+  initState(initItemState) {
+    return {
+      itemStateHistory : [ initItemState ],
+      itemStateHistoryIdx : 0
+    };
+  }
+
+  pushState(newState) {
+    return { ...this.state, itemStateHistory : [ ...this.state.itemStateHistory, newState ] };
+  }
+
+  getState() {
+    return this.state.itemStateHistory[this.state.itemStateHistoryIdx];
+  }
+
+  canUndoState() {
+    return this.state.itemStateHistoryIdx > 0;
+  }
+
+  canRedoState() {
+    return this.state.itemStateHistoryIdx < this.state.itemStateHistory.length - 1;
+  }
+
+  undoState() {
+    if (this.state.itemStateHistoryIdx > 0)
+    {
+      const newState = { ...this.state, itemStateHistoryIdx :  this.state.itemStateHistoryIdx - 1 }
+      this.setState({ ...this.state, itemStateHistoryIdx :  this.state.itemStateHistoryIdx - 1 });
     }
   }
 
+  redoState() {
+    if (this.state.itemStateHistoryIdx < this.state.itemStateHistory.length - 1)
+    {
+      this.setState({ ...this.state, itemStateHistoryIdx :  this.state.itemStateHistoryIdx + 1 });
+    }    
+  }
+
+  insertAndCutState(newState) {
+    const newStateHistory = this.state.itemStateHistory.slice(0, this.state.itemStateHistoryIdx + 1);
+    newStateHistory.push(newState);
+    return { ...this.state, itemStateHistory : newStateHistory, itemStateHistoryIdx : this.state.itemStateHistoryIdx + 1 };
+  }
+
   canPerformAction(actionName) {
-    return this.testMap[actionName](this.state.itemState);
+    return this.testMap[actionName](this.getState());
   }
 
   performAction(actionName) {
-    const result = this.actionMap[actionName](this.state.itemState, this.rng);
+    const result = this.actionMap[actionName](this.getState(), this.rng);
     if (result[0]) {
-      this.setState( {...this.state, itemState : result[1]} );
+      this.setState(this.insertAndCutState(result[1], this.state.itemStateHistoryIdx));
     }
   }
 
@@ -624,15 +686,16 @@ class TheoryCrafter extends React.Component {
   render() {
     return [
 //      <CraftingButton onClick={ () => this.setState(this.state) } enabled="true" label="Debug Refresh" key="Refresh" />,
-      this.RenderCraftingButton("scour", "Scour"),
-      this.RenderCraftingButton("transmute", "Transmutation"),
-      this.RenderCraftingButton("aug", "Augmentation"),
-      this.RenderCraftingButton("alt", "Alteration"),
-      this.RenderCraftingButton("regal", "Regal"),
-      this.RenderCraftingButton("alch", "Alchemy"),
-      this.RenderCraftingButton("chaos", "Chaos"),
-      this.RenderCraftingButton("exalt", "Exalted"),
-      <CraftedItem itemState={ this.state.itemState } key="craftedItem" />
+        this.RenderCraftingButton("scour", "Scour"),
+        this.RenderCraftingButton("transmute", "Transmutation"),
+        this.RenderCraftingButton("aug", "Augmentation"),
+        this.RenderCraftingButton("alt", "Alteration"),
+        this.RenderCraftingButton("regal", "Regal"),
+        this.RenderCraftingButton("alch", "Alchemy"),
+        this.RenderCraftingButton("chaos", "Chaos"),
+        this.RenderCraftingButton("exalt", "Exalted"),
+        <div><CraftingButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label="Undo" key="undo" /><CraftingButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label="Redo" key="redo" /></div>,
+        <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx] } key="craftedItem" />
     ]
   }
 }
