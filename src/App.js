@@ -2,7 +2,7 @@ import React from 'react';
 import './App.css';
 import TranslationHelper from './Translation.js';
 import seedrandom from 'seedrandom';
-
+import RareItemNames from './RareItemnames.js';
 import base_items from './data/base_items.json';
 import item_classes from './data/item_classes.json';
 import mods from './data/mods.json';
@@ -25,11 +25,11 @@ function ItemNameLine (props) {
 }
 
 class CraftedItem extends React.Component {
-  getItemTypeName = function() {
+  getItemTypeName() {
     return base_items[this.props.itemState.baseItemId]["name"];
   }
 
-  getTipLine = function(modInstance, context) {
+  getTipLine(modInstance, context) {
     const mod = mods[modInstance.id];
     let line = "";
     if (context === "prefix" || context === "suffix") {
@@ -41,26 +41,26 @@ class CraftedItem extends React.Component {
     return <TipLine line={line} key={modInstance.id + "_tip"}/>;
   }
 
-  getStatLines = function(modInstance) {
+  getStatLines(modInstance) {
     const mod = mods[modInstance.id];
     const values = modInstance.values;
     const translationStrings = TranslationHelper.TranslateMod(stat_translations, mod, values);    
     return translationStrings.map((x, i) => <PropertyLine line={x} key={modInstance.id + "_mod_" + i}/>);
   }
 
-  getImplicitLine = function(modInstance) {
+  getImplicitLine(modInstance) {
     return [this.getTipLine(modInstance, "implicit"), this.getStatLines(modInstance)];
   }
 
-  getImplicitLines = function() {
+  getImplicitLines() {
     return this.props.itemState.implicits.map(x => this.getImplicitLine(x));
   }
 
-  getAffixLine = function(modInstance) {
+  getAffixLine(modInstance) {
     return [this.getTipLine(modInstance, mods[modInstance.id]["generation_type"]), this.getStatLines(modInstance)];
   }
 
-  getAffixLines = function() {
+  getAffixLines() {
     return this.props.itemState.affixes.map(x => this.getAffixLine(x));
   }
 
@@ -322,6 +322,11 @@ function CreateRolledMod(modId, rng) {
   }  
 }
 
+function RollRareName(itemState, rng) {
+  const itemData = base_items[itemState.baseItemId];
+  return RareItemNames.GenerateRareName(itemData, rng);
+}
+
 function RollRareAffixCount(baseItemId, rng) {
   const maxAffixCount = GetAffixLimitForRarity(baseItemId, "rare");
   if (maxAffixCount === 6) {
@@ -439,11 +444,12 @@ function CanScourItem(itemState) {
   return true;
 }
 
+// eslint-disable-next-line no-unused-vars
 function ScourItem(itemState, rng) {
   if (!CanScourItem(itemState)) {
     return [false, itemState];
   }
-  return [true, { ...cloneItemState(itemState), rarity : "normal", affixes : [] }];
+  return [true, { ...cloneItemState(itemState), generatedName : "", rarity : "normal", affixes : [] }];
 }
 
 function CanTransmutationItem(itemState) {
@@ -465,7 +471,7 @@ function TransmutationItem(itemState, rng) {
     return [false, itemState];
   }
 
-  let newItemState = { ...itemState, rarity : "magic" };
+  let newItemState = { ...cloneItemState(itemState), rarity : "magic" };
   const numMods = randRange(rng, 1, 2);
   for (let i = 0; i < numMods; ++i) {
     newItemState = AddRandomMod(newItemState, rng)[1];
@@ -490,7 +496,7 @@ function AlterationItem(itemState, rng) {
     return [0, itemState];
   }
 
-  let newItemState = { ...itemState, affixes : [] };
+  let newItemState = { ...cloneItemState(itemState), affixes : [] };
   const numMods = randRange(rng, 1, 2);
   for (let i = 0; i < numMods; ++i) {
     newItemState = AddRandomMod(newItemState, rng)[1];
@@ -544,7 +550,7 @@ function RegalItem(itemState, rng) {
     return [false, itemState];
   }
 
-  let rareItemState = { ...itemState, rarity : "rare" };
+  let rareItemState = { ...cloneItemState(itemState), rarity : "rare", generatedName : RollRareName(itemState, rng) };
   const [result, newItemState] = AddRandomMod(rareItemState, rng);
   if (!result) {
     return [false, itemState];
@@ -571,11 +577,12 @@ function AlchemyItem(itemState, rng) {
     return [false, itemState];
   }
 
-  let newItemState = { ...itemState, rarity : "rare" };
+  let newItemState = { ...cloneItemState(itemState), rarity : "rare", generatedName : RollRareName(itemState, rng) };
   const numMods = RollRareAffixCount(itemState.baseItemId, rng);
   for (let i = 0; i < numMods; ++i) {
     newItemState = AddRandomMod(newItemState, rng)[1];
   }
+  newItemState.generatedName = RollRareName(itemState, rng);
 
   return [true, newItemState];
 }
@@ -596,7 +603,7 @@ function ChaosItem(itemState, rng) {
     return [false, itemState];
   }
 
-  let newItemState = { ...itemState, affixes : [] };
+  let newItemState = { ...cloneItemState(itemState), affixes : [], generatedName : RollRareName(itemState, rng)  };
   const numMods = RollRareAffixCount(itemState.baseItemId, rng);
   for (let i = 0; i < numMods; ++i) {
     newItemState = AddRandomMod(newItemState, rng)[1];
@@ -864,7 +871,7 @@ class TheoryCrafter extends React.Component {
         this.RenderCraftingButton("annul", "Annulment"),
         this.RenderCraftingButton("bless", "Blessed"),
         this.RenderCraftingButton("divine", "Divine"),
-        <div><CraftingButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label="Undo" key="undo" /><CraftingButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label="Redo" key="redo" /></div>,
+        <div key="undoDiv"><CraftingButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label="Undo" key="undo" /><CraftingButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label="Redo" key="redo" /></div>,
         <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx] } key="craftedItem" />
     ]
   }
