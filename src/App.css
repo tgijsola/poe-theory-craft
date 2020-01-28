@@ -28,6 +28,14 @@
   color: #df5dff;
 }
 
+.button {
+  background-color: wheat;
+}
+.button:disabled {
+  color: #aaa;
+  background-color: #eee;
+}
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);
