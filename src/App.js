@@ -33,7 +33,7 @@ class CraftedItem extends React.Component {
     const mod = mods[modInstance.id];
     let line = "";
     if (context === "prefix" || context === "suffix") {
-      line = context[0].toUpperCase() + context.slice(1) + " Modifier \"" + mod["name"] + "\"" + (modInstance.tier > 0 ? (" (Tier: " + modInstance.tier + ")") : "");
+      line = context[0].toUpperCase() + context.slice(1) + " Modifier \"" + mod["name"] + "\"" + (modInstance.tierCount > 0 ? (" (Tier: " + (modInstance.tier + 1) + "/" + modInstance.tierCount + ")") : "");
     }
     else if (context === "unique" || context === "implicit") {
       line = context[0].toUpperCase() + context.slice(1) + " Modifier";
@@ -314,11 +314,58 @@ function RollModValues(modId, rng) {
   return statRolls;
 }
 
-function CreateRolledMod(modId, rng) {
+function GetTierForMod(itemState, modId) {
+  const mod = mods[modId];
+  if (mod["is_essence_only"]) {
+    return [0, 1]
+  }
+
+  if (mod["generation_type"] === "unique") {
+    return [0, 1]
+  }
+
+  let modTier = 0;
+  let modCount = 1;
+  const modLevel = mod["required_level"];
+  const baseItemTags = GetBaseItemTags(itemState);
+  for (const otherModId in mods) {
+    if (otherModId === modId) {
+      continue;
+    }
+    const otherMod = mods[otherModId];
+    if (otherMod["domain"] !== mod["domain"]) {
+      continue;
+    }
+    if (otherMod["group"] !== mod["group"]) {
+      continue;
+    }
+    if (otherMod["type"] !== mod["type"]) {
+      continue;
+    }
+    if (otherMod["is_essence_only"]) {
+      continue;
+    }
+    if (GetSpawnWeightForMod(otherModId, baseItemTags) <= 0) {
+      continue;
+    }
+
+    modCount++;
+
+    if (otherMod["required_level"] > modLevel) {
+      modTier++;
+    }
+  }
+
+  return [modTier, modCount];
+}
+
+function CreateRolledMod(itemState, modId, rng) {
+  const tierValues = GetTierForMod(itemState, modId);
   return {
     id : modId,
     values : RollModValues(modId, rng),
-    tier : 0
+    tier : tierValues[0],
+    tierCount : tierValues[1],
   }  
 }
 
@@ -392,7 +439,7 @@ function CreateItem(baseItemId, level, rng) {
   // Add and roll implicits
   const baseItem = base_items[baseItemId];
   for (const implicitId of baseItem["implicits"]) {
-    itemState.implicits.push(CreateRolledMod(implicitId, rng));
+    itemState.implicits.push(CreateRolledMod(itemState, implicitId, rng));
   }
 
   return itemState;
@@ -406,7 +453,7 @@ function AddRandomModFromList(itemState, mods, rng) {
   if (!modId) {
     return [false, itemState];
   }
-  newItemState.affixes.push(CreateRolledMod(modId, rng));
+  newItemState.affixes.push(CreateRolledMod(itemState, modId, rng));
   return [true, newItemState];  
 }
 
@@ -749,8 +796,6 @@ function CraftingButton(props) {
 class TheoryCrafter extends React.Component {
   constructor(props) {
     super(props);
-    this.history = [];
-    this.historyIdx = 0;
 
     this.testMap = {
       "scour" : CanScourItem,
@@ -791,31 +836,33 @@ class TheoryCrafter extends React.Component {
     this.rng = seedrandom();
     const normalItemState = CreateItem("Metadata/Items/Armours/Boots/BootsAtlas1", 100, this.rng);
     this.state = this.initState(normalItemState);
-    const transmuteResult = TransmutationItem(normalItemState, this.rng);
-    this.state = this.insertAndCutState(transmuteResult[1]);
   }
 
   initState(initItemState) {
     return {
-      itemStateHistory : [ initItemState ],
-      itemStateHistoryIdx : 0
+      itemStateHistory : [ { itemState: initItemState, action : "" } ],
+      itemStateHistoryIdx : 0,
+      lastCommand : "",
     };
   }
 
-  pushState(newState) {
-    return { ...this.state, itemStateHistory : [ ...this.state.itemStateHistory, newState ] };
+  pushState(newState, actionName) {
+    return { ...this.state, itemStateHistory : [ ...this.state.itemStateHistory, { itemState: newState, action : actionName } ] };
   }
 
   getState() {
-    return this.state.itemStateHistory[this.state.itemStateHistoryIdx];
+    return this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState;
   }
 
   canUndoState() {
     return this.state.itemStateHistoryIdx > 0;
   }
 
-  canRedoState() {
-    return this.state.itemStateHistoryIdx < this.state.itemStateHistory.length - 1;
+  getUndoLabel() {
+    if (!this.canUndoState()) {
+      return "Undo";
+    }
+    return "Undo " + this.state.itemStateHistory[this.state.itemStateHistoryIdx].action;
   }
 
   undoState() {
@@ -825,17 +872,60 @@ class TheoryCrafter extends React.Component {
     }
   }
 
+  canRerollAction() {
+    return (this.state.itemStateHistory[this.state.itemStateHistoryIdx].action != "") 
+      && (this.state.itemStateHistoryIdx > 0);
+  }
+
+  getRerollLabel() {
+    if (!this.canRerollAction()) {
+      return "Reroll Action";
+    }
+    return "Reroll " + this.state.itemStateHistory[this.state.itemStateHistoryIdx].action;
+  }
+
+  rerollAction() {
+    if (!this.canRerollAction()) {
+      return;
+    }
+    const action = this.state.itemStateHistory[this.state.itemStateHistoryIdx].action;
+    const previousItemState = this.state.itemStateHistory[this.state.itemStateHistoryIdx - 1].itemState;
+    const canPerformAction = this.testMap[action](previousItemState);
+    if (!canPerformAction) {
+      return;
+    }
+    const result = this.actionMap[action](previousItemState, this.rng);
+    if (result[0]) {
+      this.setState(this.insertAndCutStateAt(result[1], action, this.state.itemStateHistoryIdx));
+    }
+  }
+
+  canRedoState() {
+    return this.state.itemStateHistoryIdx < this.state.itemStateHistory.length - 1;
+  }
+
+  getRedoLabel() {
+    if (!this.canRedoState()) {
+      return "Redo";
+    }
+    return "Redo " + this.state.itemStateHistory[this.state.itemStateHistoryIdx + 1].action;
+  }
+
   redoState() {
     if (this.state.itemStateHistoryIdx < this.state.itemStateHistory.length - 1)
     {
       this.setState({ ...this.state, itemStateHistoryIdx :  this.state.itemStateHistoryIdx + 1 });
-    }    
+    }
   }
 
-  insertAndCutState(newState) {
-    const newStateHistory = this.state.itemStateHistory.slice(0, this.state.itemStateHistoryIdx + 1);
-    newStateHistory.push(newState);
-    return { ...this.state, itemStateHistory : newStateHistory, itemStateHistoryIdx : this.state.itemStateHistoryIdx + 1 };
+  insertAndCutStateAt(newState, actionName, index) {
+    const newStateHistory = this.state.itemStateHistory.slice(0, index);
+    newStateHistory.push( { itemState: newState, action : actionName } );
+    return { ...this.state, itemStateHistory : newStateHistory, itemStateHistoryIdx : index };    
+  }
+
+  insertAndCutState(newState, actionName) {
+    return this.insertAndCutStateAt(newState, actionName, this.state.itemStateHistoryIdx + 1);
   }
 
   canPerformAction(actionName) {
@@ -845,7 +935,7 @@ class TheoryCrafter extends React.Component {
   performAction(actionName) {
     const result = this.actionMap[actionName](this.getState(), this.rng);
     if (result[0]) {
-      this.setState(this.insertAndCutState(result[1], this.state.itemStateHistoryIdx));
+      this.setState(this.insertAndCutState(result[1], actionName));
     }
   }
 
@@ -871,8 +961,10 @@ class TheoryCrafter extends React.Component {
         this.RenderCraftingButton("annul", "Annulment"),
         this.RenderCraftingButton("bless", "Blessed"),
         this.RenderCraftingButton("divine", "Divine"),
-        <div key="undoDiv"><CraftingButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label="Undo" key="undo" /><CraftingButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label="Redo" key="redo" /></div>,
-        <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx] } key="craftedItem" />
+        <div key="undoDiv"><CraftingButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label={ this.getUndoLabel() } key="undo" /></div>,
+        <div key="redoDiv"><CraftingButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label={ this.getRedoLabel() } key="redo" /></div>,
+        <div key="rerollDiv"><CraftingButton onClick={ () => this.rerollAction() } enabled={ this.canRerollAction() } label={ this.getRerollLabel() } key="undo" /></div>,
+        <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } key="craftedItem" />
     ]
   }
 }
