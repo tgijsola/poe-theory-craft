@@ -689,6 +689,52 @@ function AnnulmentItem(itemState, rng) {
   return [true, newItemState];
 }
 
+function CanBlessedItem(itemState) {
+  if (itemState.corrupted) {
+    return false;
+  }
+  if (itemState.implicits.length == 0) {
+    return false;
+  }
+
+  return true;
+}
+
+function BlessedItem(itemState, rng) {
+  if (!CanBlessedItem(itemState)) {
+    return false;
+  }
+
+  let newItemState = cloneItemState(itemState);
+  for (let implicit of newItemState.implicits) {
+    implicit.values = RollModValues(implicit.id, rng);
+  }
+  return [true, newItemState];
+}
+
+function CanDivineItem(itemState) {
+  if (itemState.corrupted) {
+    return false;
+  }
+  if (itemState.affixes.length == 0) {
+    return false;
+  }
+
+  return true;
+}
+
+function DivineItem(itemState, rng) {
+  if (!CanDivineItem(itemState)) {
+    return false;
+  }
+
+  let newItemState = cloneItemState(itemState);
+  for (let affix of newItemState.affixes) {
+    affix.values = RollModValues(affix.id, rng);
+  }
+  return [true, newItemState];
+}
+
 function CraftingButton(props) {
   return <button className="button" onClick={props.onClick} disabled={!props.enabled}>{props.label}</button>;
 }
@@ -713,6 +759,8 @@ class TheoryCrafter extends React.Component {
       "exalt_redeemer" : (itemState) => CanExaltedWithInfluenceItem(itemState, "redeemer"),
       "exalt_warlord" : (itemState) => CanExaltedWithInfluenceItem(itemState, "warlord"),
       "annul" : CanAnnulmentItem,
+      "bless" : CanBlessedItem,
+      "divine" : CanDivineItem,
     }
 
     this.actionMap = {
@@ -729,6 +777,8 @@ class TheoryCrafter extends React.Component {
       "exalt_redeemer" : (itemState, rng) => ExaltedWithInfluenceItem(itemState, rng, "redeemer"),
       "exalt_warlord" : (itemState, rng) => ExaltedWithInfluenceItem(itemState, rng, "warlord"),
       "annul" : AnnulmentItem,
+      "bless" : BlessedItem,
+      "divine" : DivineItem,
     }
 
     this.rng = seedrandom();
@@ -812,6 +862,8 @@ class TheoryCrafter extends React.Component {
         this.RenderCraftingButton("exalt_redeemer", "Redeemer Exalt"),
         this.RenderCraftingButton("exalt_warlord", "Warlord Exalt"),
         this.RenderCraftingButton("annul", "Annulment"),
+        this.RenderCraftingButton("bless", "Blessed"),
+        this.RenderCraftingButton("divine", "Divine"),
         <div><CraftingButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label="Undo" key="undo" /><CraftingButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label="Redo" key="redo" /></div>,
         <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx] } key="craftedItem" />
     ]
