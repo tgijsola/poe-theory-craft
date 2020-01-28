@@ -206,6 +206,28 @@ function GetValidModsForItem(itemState) {
   return validMods;
 }
 
+function GetValidModsForItemWithPositiveWeightTag(itemState, tag) {
+  const tags = GetItemTags(itemState);
+  let validMods = [];
+  for (const modId in mods) {
+    const mod = mods[modId];
+    if (!(mod["spawn_weights"].find(x => x["tag"] == tag && x["weight"] > 0))) {
+      continue;
+    }
+
+    if (!CanModBeAddedToItem(modId, itemState)) {
+      continue;
+    }
+
+    if (GetSpawnWeightForMod(modId, tags) <= 0) {
+      continue;
+    }
+
+    validMods.push(modId);
+  }
+  return validMods;
+}
+
 function CreateWeightedModPool(modIds, tags) {
   let modPool = {
     totalWeight : 0,
@@ -239,19 +261,20 @@ function PickModFromWeightedModPool(modPool, rng) {
   return null;
 }
 
-function GetInfluenceTags(baseItemId, influence) {
+function GetInfluenceTag(baseItemId, influence) {
   const baseItem = base_items[baseItemId];
   const baseItemClass = baseItem["item_class"];
-  if (item_classes.includes(baseItemClass)) {
+  console.log(item_classes);
+  if (baseItemClass in item_classes) {
     const influenceTagId = influence + "_tag";
-    if (item_classes[baseItemClass].includes(influenceTagId)) {
+    if (influenceTagId in item_classes[baseItemClass]) {
       const influenceTag = item_classes[baseItemClass][influenceTagId];
       if (influenceTag) {
-        return [influenceTag];
+        return influenceTag;
       }
     }
   }
-  return [];
+  return null;
 }
 
 function GetAddedTags(modId) {
@@ -263,7 +286,10 @@ function GetBaseItemTags (itemState) {
   let tags = [];
   tags = tags.concat(baseItem["tags"]);
   for (const influence of itemState.influences) {
-    tags = tags.concat(GetInfluenceTags(itemState.baseItemId, influence));
+    const influenceTag = GetInfluenceTag(itemState.baseItemId, influence);
+    if (influenceTag) {
+      tags.push(influenceTag);
+    }
   }
   for (const implicit of itemState.implicits) {
     tags = tags.concat(GetAddedTags(implicit.id));
@@ -337,6 +363,7 @@ function cloneMods(modArray) {
 function cloneItemState(itemState) {
   return { 
     ...itemState, 
+    influences : itemState.influences.slice(),
     implicits : cloneMods(itemState.implicits), 
     corruptions : cloneMods(itemState.corruptions), 
     affixes : cloneMods(itemState.affixes) 
@@ -366,17 +393,36 @@ function CreateItem(baseItemId, level, rng) {
   return itemState;
 }
 
-function AddRandomMod(itemState, rng) {
+function AddRandomModFromList(itemState, mods, rng) {
   let newItemState = cloneItemState(itemState);
-  const validMods = GetValidModsForItem(newItemState);
   const itemTags = GetItemTags(newItemState);
-  const weightedModPool = CreateWeightedModPool(validMods, itemTags);
+  const weightedModPool = CreateWeightedModPool(mods, itemTags);
   const modId = PickModFromWeightedModPool(weightedModPool, rng);
   if (!modId) {
     return [false, itemState];
   }
   newItemState.affixes.push(CreateRolledMod(modId, rng));
-  return [true, newItemState];
+  return [true, newItemState];  
+}
+
+function AddRandomMod(itemState, rng) {
+  let newItemState = cloneItemState(itemState);
+  const validMods = GetValidModsForItem(newItemState);
+  return AddRandomModFromList(itemState, validMods, rng);
+}
+
+function CanAddInfluenceToItem(itemState, influence) {
+  return GetInfluenceTag(itemState.baseItemId, influence) != null;
+}
+
+function AddInfluenceToItem(itemState, influence) {
+  if (!CanAddInfluenceToItem(itemState, influence)) {
+    return [false, itemState];
+  }
+
+  let newState = cloneItemState(itemState);
+  newState.influences.push(influence);
+  return [true, newState];
 }
 
 function CanScourItem(itemState) {
@@ -585,6 +631,38 @@ function ExaltedItem(itemState, rng) {
   return [true, newItemState];
 }
 
+function CanExaltedWithInfluenceItem(itemState, influence) {
+  if (itemState.influences.length > 0) {
+    return false;
+  }
+  if (!CanExaltedItem(itemState)) {
+    return false;
+  }
+  if (!CanAddInfluenceToItem(itemState, influence)) {
+    return false;
+  }
+
+  let [ , newItemState] = AddInfluenceToItem(itemState, influence);
+  const influenceTag = GetInfluenceTag(newItemState.baseItemId, influence);
+  const validMods = GetValidModsForItemWithPositiveWeightTag(newItemState, influenceTag);
+  if (validMods.length == 0) {
+    return false;
+  }
+
+  return true;
+}
+
+function ExaltedWithInfluenceItem(itemState, rng, influence) {
+  if (!CanExaltedWithInfluenceItem(itemState, influence)) {
+    return false;
+  }
+
+  let [ , newItemState] = AddInfluenceToItem(itemState, influence);
+  const influenceTag = GetInfluenceTag(newItemState.baseItemId, influence);
+  const validMods = GetValidModsForItemWithPositiveWeightTag(newItemState, influenceTag);
+  return AddRandomModFromList(newItemState, validMods, rng);
+}
+
 function CraftingButton(props) {
   return <button className="button" onClick={props.onClick} disabled={!props.enabled}>{props.label}</button>;
 }
@@ -604,6 +682,10 @@ class TheoryCrafter extends React.Component {
       "alch" : CanAlchemyItem,
       "chaos" : CanChaosItem,
       "exalt" : CanExaltedItem,
+      "exalt_crusader" : (itemState) => CanExaltedWithInfluenceItem(itemState, "crusader"),
+      "exalt_hunter" : (itemState) => CanExaltedWithInfluenceItem(itemState, "hunter"),
+      "exalt_redeemer" : (itemState) => CanExaltedWithInfluenceItem(itemState, "redeemer"),
+      "exalt_warlord" : (itemState) => CanExaltedWithInfluenceItem(itemState, "warlord"),
     }
 
     this.actionMap = {
@@ -615,6 +697,10 @@ class TheoryCrafter extends React.Component {
       "alch" : AlchemyItem,
       "chaos" : ChaosItem,
       "exalt" : ExaltedItem,
+      "exalt_crusader" : (itemState, rng) => ExaltedWithInfluenceItem(itemState, rng, "crusader"),
+      "exalt_hunter" : (itemState, rng) => ExaltedWithInfluenceItem(itemState, rng, "hunter"),
+      "exalt_redeemer" : (itemState, rng) => ExaltedWithInfluenceItem(itemState, rng, "redeemer"),
+      "exalt_warlord" : (itemState, rng) => ExaltedWithInfluenceItem(itemState, rng, "warlord"),
     }
 
     this.rng = seedrandom();
@@ -694,6 +780,10 @@ class TheoryCrafter extends React.Component {
         this.RenderCraftingButton("alch", "Alchemy"),
         this.RenderCraftingButton("chaos", "Chaos"),
         this.RenderCraftingButton("exalt", "Exalted"),
+        this.RenderCraftingButton("exalt_crusader", "Crusader Exalt"),
+        this.RenderCraftingButton("exalt_hunter", "Hunter Exalt"),
+        this.RenderCraftingButton("exalt_redeemer", "Redeemer Exalt"),
+        this.RenderCraftingButton("exalt_warlord", "Warlord Exalt"),
         <div><CraftingButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label="Undo" key="undo" /><CraftingButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label="Redo" key="redo" /></div>,
         <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx] } key="craftedItem" />
     ]
