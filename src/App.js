@@ -663,6 +663,32 @@ function ExaltedWithInfluenceItem(itemState, rng, influence) {
   return AddRandomModFromList(newItemState, validMods, rng);
 }
 
+function CanAnnulmentItem(itemState) {
+  if (itemState.rarity == "normal" || itemState.rarity == "unique") {
+    return false;
+  }
+  if (itemState.corrupted) {
+    return false;
+  }
+  if (GetAffixCount(itemState) == 0) {
+    return false;
+  }
+
+  return true;
+}
+
+function AnnulmentItem(itemState, rng) {
+  if (!CanAnnulmentItem(itemState)) {
+    return [false, itemState];
+  }
+
+  let newItemState = cloneItemState(itemState);
+  const numAffixes = GetAffixCount(newItemState);
+  const affixIdxToRemove = randRange(rng, 0, numAffixes - 1);
+  newItemState.affixes.splice(affixIdxToRemove, 1);
+  return [true, newItemState];
+}
+
 function CraftingButton(props) {
   return <button className="button" onClick={props.onClick} disabled={!props.enabled}>{props.label}</button>;
 }
@@ -686,6 +712,7 @@ class TheoryCrafter extends React.Component {
       "exalt_hunter" : (itemState) => CanExaltedWithInfluenceItem(itemState, "hunter"),
       "exalt_redeemer" : (itemState) => CanExaltedWithInfluenceItem(itemState, "redeemer"),
       "exalt_warlord" : (itemState) => CanExaltedWithInfluenceItem(itemState, "warlord"),
+      "annul" : CanAnnulmentItem,
     }
 
     this.actionMap = {
@@ -701,6 +728,7 @@ class TheoryCrafter extends React.Component {
       "exalt_hunter" : (itemState, rng) => ExaltedWithInfluenceItem(itemState, rng, "hunter"),
       "exalt_redeemer" : (itemState, rng) => ExaltedWithInfluenceItem(itemState, rng, "redeemer"),
       "exalt_warlord" : (itemState, rng) => ExaltedWithInfluenceItem(itemState, rng, "warlord"),
+      "annul" : AnnulmentItem,
     }
 
     this.rng = seedrandom();
@@ -736,7 +764,6 @@ class TheoryCrafter extends React.Component {
   undoState() {
     if (this.state.itemStateHistoryIdx > 0)
     {
-      const newState = { ...this.state, itemStateHistoryIdx :  this.state.itemStateHistoryIdx - 1 }
       this.setState({ ...this.state, itemStateHistoryIdx :  this.state.itemStateHistoryIdx - 1 });
     }
   }
@@ -784,6 +811,7 @@ class TheoryCrafter extends React.Component {
         this.RenderCraftingButton("exalt_hunter", "Hunter Exalt"),
         this.RenderCraftingButton("exalt_redeemer", "Redeemer Exalt"),
         this.RenderCraftingButton("exalt_warlord", "Warlord Exalt"),
+        this.RenderCraftingButton("annul", "Annulment"),
         <div><CraftingButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label="Undo" key="undo" /><CraftingButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label="Redo" key="redo" /></div>,
         <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx] } key="craftedItem" />
     ]
