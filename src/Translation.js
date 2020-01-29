@@ -149,11 +149,11 @@ export default class TranslationHelper {
     }
 
     static GetStringsForTranslationLines = function(translationJson, translationLines) {
-        let strings = Array(translationLines.length).fill("");
+        let strings = [];
         for (const lineIdx in translationLines) {
             const translationRule = this.GetTranslationRuleForLine(translationJson, translationLines[lineIdx]);
             if (translationRule) {
-                strings[lineIdx] = this.GetStringForTranslationRule(translationJson, translationRule, translationLines[lineIdx]);
+                strings = strings.concat(this.GetStringForTranslationRule(translationJson, translationRule, translationLines[lineIdx]).split("\n"));
             }
         }
         return strings;

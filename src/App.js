@@ -3,6 +3,7 @@ import './App.css';
 import TranslationHelper from './Translation.js';
 import seedrandom from 'seedrandom';
 import RareItemNames from './RareItemnames.js';
+
 import base_items from './data/base_items.json';
 import item_classes from './data/item_classes.json';
 import mods from './data/mods.json';
@@ -10,6 +11,19 @@ import stat_translations from './data/stat_translations.json';
 
 function randRange(rng, minInclusive, maxInclusive) {
   return Math.floor(rng.quick() * (maxInclusive - minInclusive + 1)) + minInclusive;
+}
+
+function PropertyLine (props) {
+  let replacementIdx = 0;
+  let replacementSpans = props.values.map((x) => <span className="property" key={replacementIdx++}>{x}</span>);
+  const lineSplit = props.line.split(/{}/g);
+  let output = [];
+  for (let i = 0; i < lineSplit.length - 1; ++i) {
+    output.push(lineSplit[i]);
+    output.push(replacementSpans[i]);
+  }
+  output.push(lineSplit[lineSplit.length - 1]);
+  return <div className="propertyLine">{output}</div>;
 }
 
 function TipLine (props) {
@@ -61,7 +75,10 @@ class CraftedItem extends React.Component {
   }
 
   getImplicitLine(modInstance) {
-    return [this.getTipLine(modInstance, "implicit"), this.getStatLines(modInstance)];
+    const statLines = this.getStatLines(modInstance);
+    if (statLines.length > 0) {
+      return [this.getTipLine(modInstance, "implicit"), this.getStatLines(modInstance)];
+    }
   }
 
   getImplicitBoxes() {
@@ -84,8 +101,10 @@ class CraftedItem extends React.Component {
     return <div className={"craftedItem " + this.props.itemState.rarity}>
       <div className="content-box">
         <ItemHeader itemTypeName={this.getItemTypeName()} generatedName={this.props.itemState.generatedName} influences={this.props.itemState.influences} />
+        <PropertyLine line="Item Level: {}" values={[this.props.itemState.level]} />
+        <div className="separator" key="sep1" />
         { this.getImplicitBoxes() }
-        <div className="separator" key="sep" />
+        <div className="separator" key="sep2" />
         { this.getAffixBoxes() }
       </div>
     </div>
@@ -861,6 +880,8 @@ class TheoryCrafter extends React.Component {
       itemStateHistory : [ { itemState: initItemState, action : "" } ],
       itemStateHistoryIdx : 0,
       lastCommand : "",
+      selectedBaseId : initItemState.baseItemId,
+      selectedBaseLevel : initItemState.level,
     };
   }
 
@@ -957,28 +978,72 @@ class TheoryCrafter extends React.Component {
     }
   }
 
+  handleSelectedBaseChanged(e) {
+    this.setState({ ...this.state, selectedBaseId : e.target.value });
+  }
+
+  RenderBaseSelectList() {
+    const baseItems = {}
+    for (const baseItemId in base_items) {
+      const domain = base_items[baseItemId]["domain"];
+      if (domain == "item" || domain == "flask") {
+        baseItems[baseItemId] = baseItemId.slice(baseItemId.lastIndexOf('/') + 1);
+      }
+    }
+    return <select value={this.state.selectedBaseId} onChange={(x) => this.handleSelectedBaseChanged(x)}>
+      { Object.keys(baseItems).map( (k) => <option value={k} key={k}>{baseItems[k]}</option> ) }
+    </select>;
+  }
+
+  handleSelectedBaseLevelChanged(e) {
+    this.setState({ ...this.state, selectedBaseLevel : e.target.value });
+  }
+
+  RenderBaseSelectLevel() {
+    return <input value={this.state.selectedBaseLevel} onChange={(x) => this.handleSelectedBaseLevelChanged(x)}/>;
+  }
+
+  handleBaseSelectButtonClicked() {
+    const normalItemState = CreateItem(this.state.selectedBaseId, this.state.selectedBaseLevel, this.rng);
+    this.setState(this.initState(normalItemState));
+  }
+
+  RenderBaseSelectButton() {
+    return <button onClick={() => this.handleBaseSelectButtonClicked()}>Create New Item</button>;
+  }
+
   RenderCraftingButton(actionName, label) {
     return <CraftingButton onClick={ () => this.performAction(actionName) } enabled={ this.canPerformAction(actionName) } label={label} key={actionName} />
   }
 
   render() {
     return [
-//      <CraftingButton onClick={ () => this.setState(this.state) } enabled="true" label="Debug Refresh" key="Refresh" />,
-        this.RenderCraftingButton("scour", "Scour"),
-        this.RenderCraftingButton("transmute", "Transmutation"),
-        this.RenderCraftingButton("aug", "Augmentation"),
-        this.RenderCraftingButton("alt", "Alteration"),
-        this.RenderCraftingButton("regal", "Regal"),
-        this.RenderCraftingButton("alch", "Alchemy"),
-        this.RenderCraftingButton("chaos", "Chaos"),
-        this.RenderCraftingButton("exalt", "Exalted"),
-        this.RenderCraftingButton("exalt_crusader", "Crusader Exalt"),
-        this.RenderCraftingButton("exalt_hunter", "Hunter Exalt"),
-        this.RenderCraftingButton("exalt_redeemer", "Redeemer Exalt"),
-        this.RenderCraftingButton("exalt_warlord", "Warlord Exalt"),
-        this.RenderCraftingButton("annul", "Annulment"),
-        this.RenderCraftingButton("bless", "Blessed"),
-        this.RenderCraftingButton("divine", "Divine"),
+        <div key="baseSelection">
+          { [
+            this.RenderBaseSelectList(),
+            this.RenderBaseSelectLevel(),
+            this.RenderBaseSelectButton(),
+          ] }
+        </div>,
+        <div key="craftingButtons">
+          { [
+            this.RenderCraftingButton("scour", "Scour"),
+            this.RenderCraftingButton("transmute", "Transmutation"),
+            this.RenderCraftingButton("aug", "Augmentation"),
+            this.RenderCraftingButton("alt", "Alteration"),
+            this.RenderCraftingButton("regal", "Regal"),
+            this.RenderCraftingButton("alch", "Alchemy"),
+            this.RenderCraftingButton("chaos", "Chaos"),
+            this.RenderCraftingButton("exalt", "Exalted"),
+            this.RenderCraftingButton("exalt_crusader", "Crusader Exalt"),
+            this.RenderCraftingButton("exalt_hunter", "Hunter Exalt"),
+            this.RenderCraftingButton("exalt_redeemer", "Redeemer Exalt"),
+            this.RenderCraftingButton("exalt_warlord", "Warlord Exalt"),
+            this.RenderCraftingButton("annul", "Annulment"),
+            this.RenderCraftingButton("bless", "Blessed"),
+            this.RenderCraftingButton("divine", "Divine")
+          ] }
+        </div>,
         <div key="undoDiv"><CraftingButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label={ this.getUndoLabel() } key="undo" /></div>,
         <div key="redoDiv"><CraftingButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label={ this.getRedoLabel() } key="redo" /></div>,
         <div key="rerollDiv"><CraftingButton onClick={ () => this.rerollAction() } enabled={ this.canRerollAction() } label={ this.getRerollLabel() } key="undo" /></div>,
