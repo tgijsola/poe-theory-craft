@@ -8,6 +8,7 @@ import base_items from './data/base_items.json';
 import item_classes from './data/item_classes.json';
 import mods from './data/mods.json';
 import stat_translations from './data/stat_translations.json';
+import stats from './data/stats.json'
 
 function randRange(rng, minInclusive, maxInclusive) {
   return Math.floor(rng.quick() * (maxInclusive - minInclusive + 1)) + minInclusive;
@@ -82,7 +83,11 @@ class CraftedItem extends React.Component {
   }
 
   getImplicitBoxes() {
-    return this.props.itemState.implicits.map(
+    let showMods = this.props.itemState.implicits;
+    if (this.props.sortMods) {
+      showMods = SortMods(showMods);
+    }
+    return showMods.map(
       x => <div className="modBox implicit" key={x.id}>{this.getImplicitLine(x)}</div>
     );
   }
@@ -92,7 +97,11 @@ class CraftedItem extends React.Component {
   }
 
   getAffixBoxes() {
-    return this.props.itemState.affixes.map(
+    let showMods = this.props.itemState.affixes;
+    if (this.props.sortMods) {
+      showMods = SortMods(showMods);
+    }
+    return showMods.map(    
       x => <div className="modBox" key={x.id}>{this.getAffixLine(x)}</div>
     );
   }
@@ -505,6 +514,69 @@ function AddRandomMod(itemState, rng) {
   return AddRandomModFromList(itemState, validMods, rng);
 }
 
+const generationTypeOrder = {
+  "unique": 0,
+  "prefix": 1,
+  "suffix": 2,
+};
+
+function ModComparer (a, b) {
+  const modA = mods[a.id];
+  const modB = mods[b.id];
+
+  const modAGenerationType = modA["generation_type"];
+  const modBGenerationType = modB["generation_type"];
+  if (modAGenerationType !== modBGenerationType) {
+    if (modAGenerationType in generationTypeOrder && modBGenerationType in generationTypeOrder) {
+      return generationTypeOrder[modAGenerationType] - generationTypeOrder[modBGenerationType];
+    }
+    return 0;
+  }
+
+  const modAFirstStatId = modA["stats"].length > 0 ? modA["stats"][0]["id"] : "";
+  const modBFirstStatId = modB["stats"].length > 0 ? modB["stats"][0]["id"] : "";
+  if (modAFirstStatId != modBFirstStatId) {
+    if (modAFirstStatId.length == 0) {
+      return -1;
+    }
+    else if (modBFirstStatId.length == 0) {
+      return 1;
+    }
+
+    // This is likely to be s-l-o-w, first pass impl only
+    let modAFirstStatIdx = -1;
+    let modBFirstStartIdx = -1;
+    const statKeys = Object.keys(stats);
+    for (let statIdx = 0; statIdx < statKeys.length; ++statIdx) {
+      const statKey = statKeys[statIdx];
+      if (statKey == modAFirstStatId) {
+        modAFirstStatIdx = statIdx;
+      }
+      else if (statKey == modBFirstStatId) {
+        modBFirstStartIdx = statIdx;
+      }
+      if (modAFirstStatIdx >= 0 && modBFirstStartIdx >= 0) {
+        break;
+      }
+    }
+    return (modAFirstStatIdx - modBFirstStartIdx);
+  }
+
+  const modARequiredLevel = modA["required_level"];
+  const modBRequiredLevel = modB["required_level"];
+  if (modARequiredLevel != modBRequiredLevel) {
+    return -(modARequiredLevel - modBRequiredLevel);
+  }
+
+  return 0;
+}
+
+function SortMods(modList) {
+  let sortedList = cloneMods(modList);
+  sortedList.sort(ModComparer);
+  return sortedList;
+}
+
 function CanAddInfluenceToItem(itemState, influence) {
   return GetInfluenceTag(itemState.baseItemId, influence) != null;
 }
@@ -887,6 +959,7 @@ class TheoryCrafter extends React.Component {
       lastCommand : "",
       selectedBaseId : initItemState.baseItemId,
       selectedBaseLevel : initItemState.level,
+      sortMods : false
     };
   }
 
@@ -1023,6 +1096,9 @@ class TheoryCrafter extends React.Component {
     return <CraftingButton onClick={ () => this.performAction(actionName) } enabled={ this.canPerformAction(actionName) } label={label} key={actionName} />
   }
 
+  handleSortModsToggled(e) {
+    this.setState( {...this.state, sortMods : e.target.checked} );
+  }
 
   render() {
     return [
@@ -1055,7 +1131,8 @@ class TheoryCrafter extends React.Component {
         <div key="undoDiv"><CraftingButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label={ this.getUndoLabel() } key="undo" /></div>,
         <div key="redoDiv"><CraftingButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label={ this.getRedoLabel() } key="redo" /></div>,
         <div key="rerollDiv"><CraftingButton onClick={ () => this.rerollAction() } enabled={ this.canRerollAction() } label={ this.getRerollLabel() } key="undo" /></div>,
-        <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } key="craftedItem" />
+        <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } sortMods={this.state.sortMods} key="craftedItem" />,
+        <div key="sortMods"><input type="checkbox" onChange={(e) => this.handleSortModsToggled(e)} /><span style={{color: 'white'}}>Sort Mods</span></div>
     ]
   }
 }
