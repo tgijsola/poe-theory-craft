@@ -9,6 +9,7 @@ const RareSuffixes = {
     "Two Hand Mace" : ["Bane", "Batter", "Blast", "Blow", "Blunt", "Brand", "Breaker", "Burst", "Crack", "Crusher", "Grinder", "Knell", "Mangler", "Ram", "Roar", "Ruin", "Shatter", "Smasher", "Star", "Thresher", "Wreck" ],
     "Sceptre" : ["Bane", "Blow", "Breaker", "Call", "Chant", "Crack", "Crusher", "Cry", "Gnarl", "Grinder", "Knell", "Ram", "Roar", "Smasher", "Song", "Spell", "Star", "Weaver" ],
     "Staff" : ["Bane", "Beam", "Branch", "Call", "Chant", "Cry", "Gnarl", "Goad", "Mast", "Pile", "Pillar", "Pole", "Post", "Roar", "Song", "Spell", "Spire", "Weaver" ],
+    "FishingRod" : ["Bane", "Beam", "Branch", "Call", "Chant", "Cry", "Gnarl", "Goad", "Mast", "Pile", "Pillar", "Pole", "Post", "Roar", "Song", "Spell", "Spire", "Weaver" ],
     "Warstaff" : ["Bane", "Beam", "Branch", "Call", "Chant", "Cry", "Gnarl", "Goad", "Mast", "Pile", "Pillar", "Pole", "Post", "Roar", "Song", "Spell", "Spire", "Weaver" ],
     "One Hand Sword" : ["Bane", "Barb", "Beak", "Bite", "Edge", "Fang", "Gutter", "Hunger", "Impaler", "Needle", "Razor", "Saw", "Scalpel", "Scratch", "Sever", "Skewer", "Slicer", "Song", "Spike", "Spiker", "Stinger", "Thirst" ],
     "Thrusting One Hand Sword" : ["Bane", "Barb", "Beak", "Bite", "Edge", "Fang", "Gutter", "Hunger", "Impaler", "Needle", "Razor", "Saw", "Scalpel", "Scratch", "Sever", "Skewer", "Slicer", "Song", "Spike", "Spiker","Stinger", "Thirst" ],

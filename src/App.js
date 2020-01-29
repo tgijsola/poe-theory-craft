@@ -59,7 +59,7 @@ class CraftedItem extends React.Component {
     const mod = mods[modInstance.id];
     let line = "";
     if (context === "prefix" || context === "suffix") {
-      line = context[0].toUpperCase() + context.slice(1) + " Modifier \"" + mod["name"] + "\"" + (modInstance.tierCount > 0 ? (" (Tier: " + (modInstance.tier + 1) + "/" + modInstance.tierCount + ")") : "");
+      line = context[0].toUpperCase() + context.slice(1) + " Modifier \"" + mod["name"] + "\"" + (modInstance.tierCount > 0 ? (" (Tier: " + (modInstance.tier + 1) + " [" + (modInstance.tierCount - modInstance.tierCountAtItemLevel + 1) + "-" + modInstance.tierCount + "])") : "");
     }
     else if (context === "unique" || context === "implicit") {
       line = context[0].toUpperCase() + context.slice(1) + " Modifier";
@@ -362,6 +362,7 @@ function GetTierForMod(itemState, modId) {
 
   let modTier = 0;
   let modCount = 1;
+  let modCountAtItemLevel = 1;
   const modLevel = mod["required_level"];
   const baseItemTags = GetBaseItemTags(itemState);
   for (const otherModId in mods) {
@@ -387,12 +388,16 @@ function GetTierForMod(itemState, modId) {
 
     modCount++;
 
+    if (otherMod["required_level"] <= itemState.level) {
+      modCountAtItemLevel++;
+    }
+
     if (otherMod["required_level"] > modLevel) {
       modTier++;
     }
   }
 
-  return [modTier, modCount];
+  return [modTier, modCount, modCountAtItemLevel];
 }
 
 function CreateRolledMod(itemState, modId, rng) {
@@ -402,6 +407,7 @@ function CreateRolledMod(itemState, modId, rng) {
     values : RollModValues(modId, rng),
     tier : tierValues[0],
     tierCount : tierValues[1],
+    tierCountAtItemLevel : tierValues[2]
   }  
 }
 
