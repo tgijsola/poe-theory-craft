@@ -248,7 +248,7 @@ function GetValidModsForItemWithPositiveWeightTag(itemState, tag) {
   let validMods = [];
   for (const modId in mods) {
     const mod = mods[modId];
-    if (!(mod["spawn_weights"].find(x => x["tag"] == tag && x["weight"] > 0))) {
+    if (!(mod["spawn_weights"].find(x => x["tag"] === tag && x["weight"] > 0))) {
       continue;
     }
 
@@ -301,7 +301,6 @@ function PickModFromWeightedModPool(modPool, rng) {
 function GetInfluenceTag(baseItemId, influence) {
   const baseItem = base_items[baseItemId];
   const baseItemClass = baseItem["item_class"];
-  console.log(item_classes);
   if (baseItemClass in item_classes) {
     const influenceTagId = influence + "_tag";
     if (influenceTagId in item_classes[baseItemClass]) {
@@ -736,7 +735,7 @@ function CanExaltedWithInfluenceItem(itemState, influence) {
   let [ , newItemState] = AddInfluenceToItem(itemState, influence);
   const influenceTag = GetInfluenceTag(newItemState.baseItemId, influence);
   const validMods = GetValidModsForItemWithPositiveWeightTag(newItemState, influenceTag);
-  if (validMods.length == 0) {
+  if (validMods.length === 0) {
     return false;
   }
 
@@ -755,13 +754,13 @@ function ExaltedWithInfluenceItem(itemState, rng, influence) {
 }
 
 function CanAnnulmentItem(itemState) {
-  if (itemState.rarity == "normal" || itemState.rarity == "unique") {
+  if (itemState.rarity === "normal" || itemState.rarity === "unique") {
     return false;
   }
   if (itemState.corrupted) {
     return false;
   }
-  if (GetAffixCount(itemState) == 0) {
+  if (GetAffixCount(itemState) === 0) {
     return false;
   }
 
@@ -784,7 +783,7 @@ function CanBlessedItem(itemState) {
   if (itemState.corrupted) {
     return false;
   }
-  if (itemState.implicits.length == 0) {
+  if (itemState.implicits.length === 0) {
     return false;
   }
 
@@ -807,7 +806,7 @@ function CanDivineItem(itemState) {
   if (itemState.corrupted) {
     return false;
   }
-  if (itemState.affixes.length == 0) {
+  if (itemState.affixes.length === 0) {
     return false;
   }
 
@@ -912,7 +911,7 @@ class TheoryCrafter extends React.Component {
   }
 
   canRerollAction() {
-    return (this.state.itemStateHistory[this.state.itemStateHistoryIdx].action != "") 
+    return (this.state.itemStateHistory[this.state.itemStateHistoryIdx].action !== "") 
       && (this.state.itemStateHistoryIdx > 0);
   }
 
@@ -985,12 +984,14 @@ class TheoryCrafter extends React.Component {
   RenderBaseSelectList() {
     const baseItems = {}
     for (const baseItemId in base_items) {
-      const domain = base_items[baseItemId]["domain"];
-      if (domain == "item" || domain == "flask") {
-        baseItems[baseItemId] = baseItemId.slice(baseItemId.lastIndexOf('/') + 1);
+      if (base_items[baseItemId]["release_state"] === "released") {
+        const domain = base_items[baseItemId]["domain"];
+        if (domain === "item" || domain === "flask") {
+          baseItems[baseItemId] = baseItemId.slice(baseItemId.lastIndexOf('/') + 1);
+        }
       }
     }
-    return <select value={this.state.selectedBaseId} onChange={(x) => this.handleSelectedBaseChanged(x)}>
+    return <select value={this.state.selectedBaseId} onChange={(x) => this.handleSelectedBaseChanged(x)} key="baseItemSelector">
       { Object.keys(baseItems).map( (k) => <option value={k} key={k}>{baseItems[k]}</option> ) }
     </select>;
   }
@@ -1000,7 +1001,7 @@ class TheoryCrafter extends React.Component {
   }
 
   RenderBaseSelectLevel() {
-    return <input value={this.state.selectedBaseLevel} onChange={(x) => this.handleSelectedBaseLevelChanged(x)}/>;
+    return <input value={this.state.selectedBaseLevel} onChange={(x) => this.handleSelectedBaseLevelChanged(x)} key="baseItemLevelInput"/>;
   }
 
   handleBaseSelectButtonClicked() {
@@ -1009,12 +1010,13 @@ class TheoryCrafter extends React.Component {
   }
 
   RenderBaseSelectButton() {
-    return <button onClick={() => this.handleBaseSelectButtonClicked()}>Create New Item</button>;
+    return <button onClick={() => this.handleBaseSelectButtonClicked()} key="baseItemCreateButton">Create New Item</button>;
   }
 
   RenderCraftingButton(actionName, label) {
     return <CraftingButton onClick={ () => this.performAction(actionName) } enabled={ this.canPerformAction(actionName) } label={label} key={actionName} />
   }
+
 
   render() {
     return [
