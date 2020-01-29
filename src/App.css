@@ -2,28 +2,28 @@
   font-family: 'FontinSmallCaps';
   font-weight: normal;
   font-style: normal;
-  src: local("☺"), url('/font/fontin-smallcaps-webfont.woff') format("woff")
+  src: local("☺"), url('/poe-theory-craft/font/fontin-smallcaps-webfont.woff') format("woff")
 }
 
 @font-face {
   font-family: 'FontinRegular';
   font-weight: normal;
   font-style: normal;
-  src: local("☺"), url('/font/fontin-regular-webfont.woff') format("woff")
+  src: local("☺"), url('/poe-theory-craft/font/fontin-regular-webfont.woff') format("woff")
 }
 
 @font-face {
   font-family: 'FontinItalic';
   font-weight: normal;
   font-style: normal;
-  src: local("☺"), url('/font/fontin-italic-webfont.woff') format("woff")
+  src: local("☺"), url('/poe-theory-craft/font/fontin-italic-webfont.woff') format("woff")
 }
 
 @font-face {
   font-family: 'FontinBold';
   font-weight: normal;
   font-style: normal;
-  src: local("☺"), url('/font/fontin-bold-webfont.woff') format("woff")
+  src: local("☺"), url('/poe-theory-craft/font/fontin-bold-webfont.woff') format("woff")
 }
 
 body {
@@ -45,16 +45,16 @@ body {
 }
 
 .craftedItem.normal .separator {
-  background: url('/img/seperator-normal.png') center no-repeat;
+  background: url('/poe-theory-craft/img/seperator-normal.png') center no-repeat;
 }
 .craftedItem.magic .separator {
-  background: url('/img/seperator-magic.png') center no-repeat;
+  background: url('/poe-theory-craft/img/seperator-magic.png') center no-repeat;
 }
 .craftedItem.rare .separator {
-  background: url('/img/seperator-rare.png') center no-repeat;
+  background: url('/poe-theory-craft/img/seperator-rare.png') center no-repeat;
 }
 .craftedItem.unique .separator {
-  background: url('/img/seperator-unique.png') center no-repeat;
+  background: url('/poe-theory-craft/img/seperator-unique.png') center no-repeat;
 }
 
 .craftedItem {
@@ -183,21 +183,21 @@ body {
   right: 4px;
 }
 .craftedItem .symbol.crusader::after {
-  background-image: url('/img/crusader-symbol.png');
+  background-image: url('/poe-theory-craft/img/crusader-symbol.png');
 }
 .craftedItem .symbol.hunter::after {
-  background-image: url('/img/hunter-symbol.png');
+  background-image: url('/poe-theory-craft/img/hunter-symbol.png');
 }
 .craftedItem .symbol.redeemer::after {
-  background-image: url('/img/redeemer-symbol.png');
+  background-image: url('/poe-theory-craft/img/redeemer-symbol.png');
 }
 .craftedItem .symbol.warlord::after {
-  background-image: url('/img/warlord-symbol.png');
+  background-image: url('/poe-theory-craft/img/warlord-symbol.png');
 }
 .craftedItem .symbol.shaper::after {
-  background-image: url('/img/shaper-symbol.png');
+  background-image: url('/poe-theory-craft/img/shaper-symbol.png');
 }
 .craftedItem .symbol.elder::after {
-  background-image: url('/img/elder-symbol.png');
+  background-image: url('/poe-theory-craft/img/elder-symbol.png');
 }
 
