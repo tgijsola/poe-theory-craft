@@ -535,11 +535,11 @@ function ModComparer (a, b) {
 
   const modAFirstStatId = modA["stats"].length > 0 ? modA["stats"][0]["id"] : "";
   const modBFirstStatId = modB["stats"].length > 0 ? modB["stats"][0]["id"] : "";
-  if (modAFirstStatId != modBFirstStatId) {
-    if (modAFirstStatId.length == 0) {
+  if (modAFirstStatId !== modBFirstStatId) {
+    if (modAFirstStatId.length === 0) {
       return -1;
     }
-    else if (modBFirstStatId.length == 0) {
+    else if (modBFirstStatId.length === 0) {
       return 1;
     }
 
@@ -549,10 +549,10 @@ function ModComparer (a, b) {
     const statKeys = Object.keys(stats);
     for (let statIdx = 0; statIdx < statKeys.length; ++statIdx) {
       const statKey = statKeys[statIdx];
-      if (statKey == modAFirstStatId) {
+      if (statKey === modAFirstStatId) {
         modAFirstStatIdx = statIdx;
       }
-      else if (statKey == modBFirstStatId) {
+      else if (statKey === modBFirstStatId) {
         modBFirstStartIdx = statIdx;
       }
       if (modAFirstStatIdx >= 0 && modBFirstStartIdx >= 0) {
@@ -564,7 +564,7 @@ function ModComparer (a, b) {
 
   const modARequiredLevel = modA["required_level"];
   const modBRequiredLevel = modB["required_level"];
-  if (modARequiredLevel != modBRequiredLevel) {
+  if (modARequiredLevel !== modBRequiredLevel) {
     return -(modARequiredLevel - modBRequiredLevel);
   }
 
