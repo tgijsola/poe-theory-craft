@@ -16,12 +16,24 @@ function TipLine (props) {
   return <div className="tipLine">{props.line}</div>
 }
 
-function PropertyLine (props) {
+function ModLine (props) {
   return <div className="modLine">{props.line}</div>
 }
 
 function ItemNameLine (props) {
   return [props.topLine && <div className="itemName" key="itemName_top">{props.topLine}</div>, props.bottomLine && <div className="itemName" key="itemName_bottom">{props.bottomLine}</div>];
+}
+
+function ItemHeader (props) {
+  const double = props.generatedName.length > 0 && props.itemTypeName.length > 0;
+  const leftSymbolClass = props.influences.length > 0 ? props.influences[0] : "";
+  const rightSymbolClass = props.influences.length > 1 ? props.influences[1] : leftSymbolClass;
+  return  <div className={"header-border " + (double ? "double" : "single")}>
+            <span className={"l symbol " + leftSymbolClass}></span>
+            <ItemNameLine topLine={props.generatedName} bottomLine={props.itemTypeName} key="nameLine"/>
+            <span className={"r symbol " + rightSymbolClass}></span>
+          </div>
+  ;
 }
 
 class CraftedItem extends React.Component {
@@ -45,32 +57,38 @@ class CraftedItem extends React.Component {
     const mod = mods[modInstance.id];
     const values = modInstance.values;
     const translationStrings = TranslationHelper.TranslateMod(stat_translations, mod, values);    
-    return translationStrings.map((x, i) => <PropertyLine line={x} key={modInstance.id + "_mod_" + i}/>);
+    return translationStrings.map((x, i) => <ModLine line={x} key={modInstance.id + "_mod_" + i}/>);
   }
 
   getImplicitLine(modInstance) {
     return [this.getTipLine(modInstance, "implicit"), this.getStatLines(modInstance)];
   }
 
-  getImplicitLines() {
-    return this.props.itemState.implicits.map(x => this.getImplicitLine(x));
+  getImplicitBoxes() {
+    return this.props.itemState.implicits.map(
+      x => <div className="modBox implicit" key={x.id}>{this.getImplicitLine(x)}</div>
+    );
   }
 
   getAffixLine(modInstance) {
     return [this.getTipLine(modInstance, mods[modInstance.id]["generation_type"]), this.getStatLines(modInstance)];
   }
 
-  getAffixLines() {
-    return this.props.itemState.affixes.map(x => this.getAffixLine(x));
+  getAffixBoxes() {
+    return this.props.itemState.affixes.map(
+      x => <div className="modBox" key={x.id}>{this.getAffixLine(x)}</div>
+    );
   }
 
   render() {
-    return [
-      <ItemNameLine topLine={this.props.itemState.generatedName} bottomLine={this.getItemTypeName()} key="nameLine"/>, 
-      <div className="separator" key="sep1">---</div>, 
-      this.getImplicitLines(),
-      <div className="separator" key="sep2">---</div>,
-      this.getAffixLines()]
+    return <div className={"craftedItem " + this.props.itemState.rarity}>
+      <div className="content-box">
+        <ItemHeader itemTypeName={this.getItemTypeName()} generatedName={this.props.itemState.generatedName} influences={this.props.itemState.influences} />
+        { this.getImplicitBoxes() }
+        <div className="separator" key="sep" />
+        { this.getAffixBoxes() }
+      </div>
+    </div>
   }
 }
 

@@ -1,31 +1,33 @@
-.App {
-  text-align: center;
+@font-face {
+  font-family: 'FontinSmallCaps';
+  font-weight: normal;
+  font-style: normal;
+  src: local("☺"), url('/font/fontin-smallcaps-webfont.woff') format("woff")
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+@font-face {
+  font-family: 'FontinRegular';
+  font-weight: normal;
+  font-style: normal;
+  src: local("☺"), url('/font/fontin-regular-webfont.woff') format("woff")
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+@font-face {
+  font-family: 'FontinItalic';
+  font-weight: normal;
+  font-style: normal;
+  src: local("☺"), url('/font/fontin-italic-webfont.woff') format("woff")
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+@font-face {
+  font-family: 'FontinBold';
+  font-weight: normal;
+  font-style: normal;
+  src: local("☺"), url('/font/fontin-bold-webfont.woff') format("woff")
 }
 
-.App-link {
-  color: #df5dff;
+body {
+  background-color: #302F2F;
 }
 
 .button {
@@ -36,11 +38,156 @@
   background-color: #eee;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.craftedItem .separator {
+  width: 200px;
+  height: 8px;
+  margin: 0 auto;
 }
+
+.craftedItem.normal .separator {
+  background: url('/img/seperator-normal.png') center no-repeat;
+}
+.craftedItem.magic .separator {
+  background: url('/img/seperator-magic.png') center no-repeat;
+}
+.craftedItem.rare .separator {
+  background: url('/img/seperator-rare.png') center no-repeat;
+}
+.craftedItem.unique .separator {
+  background: url('/img/seperator-unique.png') center no-repeat;
+}
+
+.craftedItem {
+  color: white;
+  text-align: center;
+  margin: 5px;
+  font-size: 18px;
+  font-family: 'FontinSmallCaps';
+}
+
+.craftedItem .content-box {
+  background-color: black;  
+  padding: 0px;
+  width: fit-content
+}
+
+.craftedItem .header-border {
+  border: 2px;
+  padding: 4px;
+  border-style: solid;
+  border-width: 4px;
+  position: relative;
+}
+
+.craftedItem.normal .header-border {
+  border-color: #79716E;
+  background-color: #302F2F;
+}
+.craftedItem.magic .header-border {
+  border-color: #3A405B;
+  background-color: #191928;
+}
+.craftedItem.rare .header-border {
+  border-color: #907011;
+  background-color: #261F1D;
+}
+.craftedItem.unique .header-border {
+  border-color: #7A371C;
+  background-color: #1B100B;
+}
+
+.craftedItem .itemName {
+  font-size: 24px;  
+  font-weight: 500;
+  padding: 0px 45px 0px 45px;
+}
+
+.craftedItem.normal .itemName {
+  color: #c8c8c8
+}
+.craftedItem.magic .itemName {
+  color: #88f
+}
+.craftedItem.rare .itemName {
+  color: #ff7
+}
+.craftedItem.unique .itemName {
+  color: #af6025
+}
+
+.craftedItem .modBox {
+  margin: 5px 10px;
+}
+
+.craftedItem .tipLine {
+  color: #7f7f7f;
+  font-style: italic;
+  font-size: 15px;    
+}
+
+.craftedItem .modLine {
+  color: #88f;
+}
+
+.craftedItem .crafted {
+  color: #b4b4ff
+}
+
+.craftedItem .improved {
+  color: #88f
+}
+
+.craftedItem .symbol {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.craftedItem .symbol::after {
+  content: ' ';
+  display: block;
+  top: 0px;
+  position: absolute;
+  background: none center no-repeat;
+  width: 26px;  
+  height: 33px;
+}
+
+.craftedItem .single .symbol.l::after {
+  left: 4px;
+  top: 3px;
+}
+.craftedItem .single .symbol.r::after {
+  right: 4px;
+  top: 3px;
+}
+.craftedItem .double .symbol::after {
+  top: 3px;
+  width: 45px;
+  height: 60px;
+  background-size: 45px;
+}
+.craftedItem .double .symbol.l::after {
+  left: 3px;
+}
+.craftedItem .double .symbol.r::after {
+  right: 4px;
+}
+.craftedItem .symbol.crusader::after {
+  background-image: url('/img/crusader-symbol.png');
+}
+.craftedItem .symbol.hunter::after {
+  background-image: url('/img/hunter-symbol.png');
+}
+.craftedItem .symbol.redeemer::after {
+  background-image: url('/img/redeemer-symbol.png');
+}
+.craftedItem .symbol.warlord::after {
+  background-image: url('/img/warlord-symbol.png');
+}
+.craftedItem .symbol.shaper::after {
+  background-image: url('/img/shaper-symbol.png');
+}
+.craftedItem .symbol.elder::after {
+  background-image: url('/img/elder-symbol.png');
+}
+
