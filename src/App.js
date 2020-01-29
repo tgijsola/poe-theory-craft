@@ -1085,7 +1085,7 @@ class TheoryCrafter extends React.Component {
 
   handleBaseSelectButtonClicked() {
     const normalItemState = CreateItem(this.state.selectedBaseId, this.state.selectedBaseLevel, this.rng);
-    this.setState(this.initState(normalItemState));
+    this.setState({ ...this.initState(normalItemState), sortMods: this.state.sortMods });
   }
 
   RenderBaseSelectButton() {
@@ -1132,7 +1132,7 @@ class TheoryCrafter extends React.Component {
         <div key="redoDiv"><CraftingButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label={ this.getRedoLabel() } key="redo" /></div>,
         <div key="rerollDiv"><CraftingButton onClick={ () => this.rerollAction() } enabled={ this.canRerollAction() } label={ this.getRerollLabel() } key="undo" /></div>,
         <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } sortMods={this.state.sortMods} key="craftedItem" />,
-        <div key="sortMods"><input type="checkbox" onChange={(e) => this.handleSortModsToggled(e)} /><span style={{color: 'white'}}>Sort Mods</span></div>
+        <div key="sortMods"><input type="checkbox" onChange={(e) => this.handleSortModsToggled(e)} checked={this.state.sortMods} /><span style={{color: 'white'}}>Sort Mods</span></div>
     ]
   }
 }
