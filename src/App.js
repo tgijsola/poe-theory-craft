@@ -106,15 +106,26 @@ class CraftedItem extends React.Component {
     );
   }
 
+  getGroupsWithSeparators(groups) 
+  {
+    let separatedGroups = [];
+    let separatoridx = 0;
+    for (const group of groups) {
+      if (group.length > 0) {
+        separatedGroups.push(<div className="separator" key={"sep_" + separatoridx} />);
+        separatoridx++;
+        separatedGroups = separatedGroups.concat(group);
+      }
+    }
+    return separatedGroups;
+  }
+
   render() {
     return <div className={"craftedItem " + this.props.itemState.rarity}>
       <div className="content-box">
         <ItemHeader itemTypeName={this.getItemTypeName()} generatedName={this.props.itemState.generatedName} influences={this.props.itemState.influences} />
         <PropertyLine line="Item Level: {}" values={[this.props.itemState.level]} />
-        <div className="separator" key="sep1" />
-        { this.getImplicitBoxes() }
-        <div className="separator" key="sep2" />
-        { this.getAffixBoxes() }
+        { this.getGroupsWithSeparators([this.getImplicitBoxes(), this.getAffixBoxes()]) }
       </div>
     </div>
   }
