@@ -131,6 +131,51 @@ class CraftedItem extends React.Component {
   }
 }
 
+function ModListLine(props) {
+  let spanIdx = 0;
+  let nameLineElements = props.nameLines.map( (x) => <span key={spanIdx++}>{x}</span>);
+  for (let i = 1; i < nameLineElements.length; i += 2) {
+    nameLineElements.splice(i, 0, <br />);
+  }
+  return <div className="modLine">
+    <div className="modTier">
+      { props.tierString }
+    </div>
+    <div className="modName">
+      { nameLineElements }
+    </div>
+    <div className="modWeight">
+      { props.weight }
+    </div>
+    <div className="modProb">
+      { props.prob }
+    </div>
+  </div>;
+}
+
+class ModList extends React.Component {
+  render() {
+    const modList = GetValidModsForItem(this.props.itemState, "rare").sort(ModIdComparer);
+    const itemTags = GetItemTags(this.props.itemState);
+    return <div className="modList">
+      <div className="modGroup">
+        {
+          modList.map((x) =>
+          {
+            const modData = mods[x];
+            const modWeight = GetSpawnWeightForMod(x, itemTags);
+            const modName = TranslationHelper.TranslateMod(stat_translations, modData);
+            const modTierInfo = GetTierForMod(this.props.itemState, x);
+            return <ModListLine tierString={modData["generation_type"].slice(0, 1) + (modTierInfo[0] + 1)} nameLines={ modName } weight={ modWeight } prob="1.25%" key={x} />
+          }
+          )
+        }
+      </div>
+    </div>
+  }
+}
+
+
 function CanBaseItemHaveRarity(baseItemId, rarity) {
   const baseItem = base_items[baseItemId];
   if (baseItem["domain"] === "flask") {
@@ -212,7 +257,8 @@ function GetAffixLimit(itemState) {
   return GetAffixLimitForRarity(itemState.baseItemId, itemState.rarity); 
 }
 
-function CanModBeAddedToItem(modId, itemState) {
+function CanModBeAddedToItem(modId, itemState, rarityOverride = "") {
+  const rarity = rarityOverride !== "" ? rarityOverride : itemState.rarity;
   const mod = mods[modId];
   const baseItem = base_items[itemState.baseItemId];
   if (mod["domain"] !== baseItem["domain"]) {
@@ -222,12 +268,12 @@ function CanModBeAddedToItem(modId, itemState) {
     return false;
   }
   if (mod["generation_type"] === "prefix") {
-    if (GetPrefixLimit(itemState) <= GetPrefixCount(itemState)) {
+    if (GetPrefixLimitForRarity(itemState.baseItemId, rarity) <= GetPrefixCount(itemState)) {
       return false;
     }
   }
   else if (mod["generation_type"] === "suffix") {
-    if (GetSuffixLimit(itemState) <= GetSuffixCount(itemState)) {
+    if (GetSuffixLimitForRarity(itemState.baseItemId, rarity) <= GetSuffixCount(itemState)) {
       return false;
     }
   }
@@ -246,11 +292,11 @@ function CanModBeAddedToItem(modId, itemState) {
   return true;
 }
 
-function GetValidModsForItem(itemState) {
+function GetValidModsForItem(itemState, rarityOverride = "") {
   const tags = GetItemTags(itemState);
   let validMods = [];
   for (const modId in mods) {
-    if (!CanModBeAddedToItem(modId, itemState)) {
+    if (!CanModBeAddedToItem(modId, itemState, rarityOverride)) {
       continue;
     }
 
@@ -531,9 +577,9 @@ const generationTypeOrder = {
   "suffix": 2,
 };
 
-function ModComparer (a, b) {
-  const modA = mods[a.id];
-  const modB = mods[b.id];
+function ModIdComparer (a, b) {
+  const modA = mods[a];
+  const modB = mods[b];
 
   const modAGenerationType = modA["generation_type"];
   const modBGenerationType = modB["generation_type"];
@@ -579,7 +625,11 @@ function ModComparer (a, b) {
     return -(modARequiredLevel - modBRequiredLevel);
   }
 
-  return 0;
+  return 0;  
+}
+
+function ModComparer (a, b) {
+  return ModIdComparer(a.id, b.id);
 }
 
 function SortMods(modList) {
@@ -1142,8 +1192,9 @@ class TheoryCrafter extends React.Component {
         <div key="undoDiv"><CraftingButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label={ this.getUndoLabel() } key="undo" /></div>,
         <div key="redoDiv"><CraftingButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label={ this.getRedoLabel() } key="redo" /></div>,
         <div key="rerollDiv"><CraftingButton onClick={ () => this.rerollAction() } enabled={ this.canRerollAction() } label={ this.getRerollLabel() } key="undo" /></div>,
+        <div key="sortMods"><input type="checkbox" onChange={(e) => this.handleSortModsToggled(e)} checked={this.state.sortMods} /><span style={{color: 'white'}}>Sort Mods</span></div>,
         <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } sortMods={this.state.sortMods} key="craftedItem" />,
-        <div key="sortMods"><input type="checkbox" onChange={(e) => this.handleSortModsToggled(e)} checked={this.state.sortMods} /><span style={{color: 'white'}}>Sort Mods</span></div>
+        <ModList itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } key="modList" />,
     ]
   }
 }
