@@ -2,7 +2,7 @@
   "name": "poe-theory-craft",
   "version": "0.1.0",
   "private": true,
-  "homepage" : "https://tgijsola.github.io/poe-theory-craft",
+  "homepage": "http://tgijsola.github.io/poe-theory-craft/",
   "dependencies": {
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.4.0",
@@ -17,8 +17,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "predeploy" : "npm run build",
-    "deploy" : "gh-pages -d build"
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -36,6 +36,8 @@
     ]
   },
   "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-plugin-react": "^7.18.0",
     "gh-pages": "^2.2.0"
   }
 }
