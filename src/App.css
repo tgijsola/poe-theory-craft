@@ -63,6 +63,9 @@ body {
   margin: 5px;
   font-size: 18px;
   font-family: 'FontinSmallCaps';
+  border: 0px 0px 0px 0px;
+  position: sticky;
+  top: 100px;
 }
 
 .craftedItem .content-box {
