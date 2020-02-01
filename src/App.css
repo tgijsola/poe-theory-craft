@@ -234,6 +234,10 @@ body {
   background-color: #222;  
 }
 
+.modList .modGroupLine {
+  grid-template-columns: 48px auto 80px 78px;  
+}
+
 .modList .modLine {
   border-width: 0px;
 }
@@ -242,24 +246,28 @@ body {
   grid-column-start: 1;
   grid-row: initial;
   padding: 2px;
+  margin: auto;
 }
 
 .modLine .modName, .modGroupLine .modName {
   grid-column-start: 2;
   grid-row: initial;
   padding: 2px;
+  margin: auto;  
 }
 
 .modLine .modWeight, .modGroupLine .modWeight {
   grid-column-start: 3;
   grid-row: initial;
   padding: 2px;
+  margin: auto;  
 }
 
 .modLine .modProb, .modGroupLine .modProb {
   grid-column-start: 4;
   grid-row: initial;
   padding: 2px;
+  margin: auto;  
 }
 
 .modList .modLine {
