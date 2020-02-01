@@ -122,12 +122,12 @@ export default class TranslationHelper {
         return value;
     }
 
-    static GetStringForTranslationRule = function(translationJson, rule, line) {
+    static GetStringForTranslationRule = function(translationJson, rule, line, stringReplacementForValues = null) {
         const translation = translationJson[line["tidx"]];
         let replacementStrings = Array(translation["ids"].length);
         for (const statIdx in translation["ids"]) {
-            const replacementMin = this.ApplyIndexHandlers(rule["index_handlers"][statIdx], line["mins"][statIdx]);
-            const replacementMax = this.ApplyIndexHandlers(rule["index_handlers"][statIdx], line["maxs"][statIdx]);
+            let replacementMin = this.ApplyIndexHandlers(rule["index_handlers"][statIdx], line["mins"][statIdx]);
+            let replacementMax = this.ApplyIndexHandlers(rule["index_handlers"][statIdx], line["maxs"][statIdx]);
             let replacementValue = null;
             if ("values" in line) {
                 replacementValue = this.ApplyIndexHandlers(rule["index_handlers"][statIdx], line["values"][statIdx]);
@@ -135,9 +135,22 @@ export default class TranslationHelper {
 
             let replacementCombined = "";
             if (replacementMin === replacementMax) {
-                replacementCombined = replacementMin;
+                if (stringReplacementForValues) {
+                    replacementCombined = stringReplacementForValues;
+                }
+                else {
+                    replacementCombined = replacementMin;
+                }
             }
             else {
+                if (stringReplacementForValues) {
+                    replacementMin = stringReplacementForValues;
+                    replacementMax = stringReplacementForValues;
+                    if (replacementValue) {
+                        replacementValue = stringReplacementForValues;
+                    }
+                }
+
                 replacementCombined = "(" + replacementMin + "-" + replacementMax + ")";
                 if (replacementValue) {
                     replacementCombined = replacementValue + replacementCombined;
@@ -148,12 +161,12 @@ export default class TranslationHelper {
         return this.stringformat(rule["string"], replacementStrings);
     }
 
-    static GetStringsForTranslationLines = function(translationJson, translationLines) {
+    static GetStringsForTranslationLines = function(translationJson, translationLines, stringReplacementForValues = null) {
         let strings = [];
         for (const lineIdx in translationLines) {
             const translationRule = this.GetTranslationRuleForLine(translationJson, translationLines[lineIdx]);
             if (translationRule) {
-                strings = strings.concat(this.GetStringForTranslationRule(translationJson, translationRule, translationLines[lineIdx]).split("\n"));
+                strings = strings.concat(this.GetStringForTranslationRule(translationJson, translationRule, translationLines[lineIdx], stringReplacementForValues).split("\n"));
             }
         }
         return strings;
@@ -163,4 +176,9 @@ export default class TranslationHelper {
         const translationLines = this.GetTranslationLinesForMod(translationJson, mod, values);
         return this.GetStringsForTranslationLines(translationJson, translationLines);
     }
+
+    static TranslateModForGroup = function(translationJson, mod) {
+        const translationLines = this.GetTranslationLinesForMod(translationJson, mod, null);
+        return this.GetStringsForTranslationLines(translationJson, translationLines, "x");
+    }    
 }

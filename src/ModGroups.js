@@ -56,17 +56,18 @@ export class ModLookupTables {
     constructor() {
         this.domainTable = {};
         this.groupedModTable = {};
-        this.firstStatLine = {};
+        this.statLineIndices = {};
     }
 
-    add(modId, domain, group, type) {
+    add(modId, domain, group, type, statLineIndices) {
         this.addToDomainTable(modId, domain);
-        this.addToGroupedModTable(modId, domain, group, type);
+        this.addToGroupedModTable(modId, domain, group, type, statLineIndices);
+        this.addStatLineIndices(modId, statLineIndices);
     }
 
-    addFirstStatLine(modId, statLineIdx)
+    addStatLineIndices(modId, statLineIndices)
     {
-        this.firstStatLine[modId] = statLineIdx;
+        this.statLineIndices[modId] = statLineIndices;
     }
 
     addToDomainTable(modId, domain) {
@@ -78,8 +79,8 @@ export class ModLookupTables {
         }
     }
 
-    addToGroupedModTable(modId, domain, group, type) {
-        const key = this.getGroupedTableKey(domain, group, type);
+    addToGroupedModTable(modId, domain, group, type, statIndices) {
+        const key = this.getGroupedTableKey(domain, group, type, statIndices);
         if (!(key in this.groupedModTable)) {
             this.groupedModTable[key] = [ modId ];
         }
@@ -92,16 +93,20 @@ export class ModLookupTables {
         return this.domainTable[domain];
     }
 
-    getGroupedTable(domain, group, type) {
-        return this.groupedModTable[this.getGroupedTableKey(domain, group, type)];
+    getGroupedTable(domain, group, type, statIndices) {
+        return this.groupedModTable[this.getGroupedTableKey(domain, group, type, statIndices)];
     }
 
-    getGroupedTableKey(domain, group, type) {
-        return domain + "|" + group + "|" + type;
+    getGroupedTableKey(domain, group, type, statIndices) {
+        return domain + "|" + group + "|" + type + "|" + statIndices.join("|");
     }
 
-    getFirstStatLine(modId) {
-        return this.firstStatLine[modId];
+    getGroupedTableKeyForMod(modId, modData) {
+        return this.getGroupedTableKey(modData["domain"], modData["group"], modData["type"], this.getStatLineIndices(modId));
+    }
+
+    getStatLineIndices(modId) {
+        return this.statLineIndices[modId];
     }
 }
 
@@ -148,26 +153,20 @@ export class ModLookupTables {
 export function ParseModGroups(mods, stats) {
     let modLookupTables = new ModLookupTables();
 
-    const statKeys = Object.keys(stats);
+    let statKeyToIndex = {};
+    let idx = 0;
+    for (let statKey in stats) {
+        statKeyToIndex[statKey] = idx;
+        idx++;
+    }
 
     for (const modId in mods) {
         const mod = mods[modId];
-
-        modLookupTables.add(modId, mod["domain"], mod["group"], mod["type"]);
-
-        let firstStatIdx = -1;
-        const firstStatId = mod["stats"].length > 0 ? mod["stats"][0]["id"] : "";
-        if (firstStatId.length > 0) {
-          for (let statIdx = 0; statIdx < statKeys.length; ++statIdx) {
-            const statKey = statKeys[statIdx];
-            if (statKey === firstStatId) {
-                firstStatIdx = statIdx;
-              break;
-            }
-          }
+        let statIndices = [];
+        for (const stat of mod["stats"]) {
+            statIndices.push(statKeyToIndex[stat.id]);
         }
-        
-        modLookupTables.addFirstStatLine(modId, firstStatIdx);
+        modLookupTables.add(modId, mod["domain"], mod["group"], mod["type"], statIndices);
 
         // // Filter mods from unaccepted domains
         // if (!validModDomains.has(mod["domain"])) {

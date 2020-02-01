@@ -137,7 +137,7 @@ function ModListLine(props) {
   for (let i = 1; i < nameLineElements.length; i += 2) {
     nameLineElements.splice(i, 0, <br />);
   }
-  return <div className="modLine">
+  return <div className={props.lineClass}>
     <div className="modTier">
       { props.tierString }
     </div>
@@ -154,21 +154,52 @@ function ModListLine(props) {
 }
 
 class ModList extends React.Component {
-  render() {
-    const modList = GetValidModsAndWeightsForItem(this.props.itemState, this.props.context, "rare").sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });
-    return <div className="modList">
-      <div className="modGroup">
-        {
-          modList.map((x) => {
-            const modData = this.props.context.mods[x.modId];
-            const modWeight = x.weight;
-            const modName = TranslationHelper.TranslateMod(stat_translations, modData);
-            const modTierInfo = GetTierForMod(this.props.itemState, x.modId, this.props.context);
-            return <ModListLine tierString={modData["generation_type"].slice(0, 1) + (modTierInfo[0] + 1)} nameLines={modName} weight={modWeight} prob="1.25%" key={x.modId} />
-          })
-        }
+  renderModsInModGroup(modAndWeightGroup, totalWeight) {
+    return modAndWeightGroup.map((x) => {
+      const modData = this.props.context.mods[x.modId];
+      const modWeight = x.weight;
+      const modName = TranslationHelper.TranslateMod(stat_translations, modData);
+      const modTierInfo = GetTierForMod(this.props.itemState, x.modId, this.props.context);
+      return <ModListLine lineClass="modLine" tierString={modData["generation_type"].slice(0, 1) + (modTierInfo[0] + 1)} nameLines={modName} weight={modWeight} prob={(modWeight / totalWeight).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={x.modId} />
+    });
+  }
+
+  renderModGroup(modAndWeightGroup, totalWeight, collapsed) {
+    const groupWeight = modAndWeightGroup.reduce((total, value) => { return total + value.weight }, 0);
+    const groupName = TranslationHelper.TranslateModForGroup(stat_translations, this.props.context.mods[modAndWeightGroup[0].modId]);
+    const elementList = [<ModListLine tierString = { collapsed ? "▶" : "▼" } lineClass="modGroupLine" nameLines={groupName} weight={groupWeight} prob={(groupWeight / totalWeight).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={groupName} />];
+    elementList.push(...this.renderModsInModGroup(modAndWeightGroup, totalWeight));
+    return <div className="modGroup">
+      {
+        elementList
+      }
       </div>
-    </div>
+  }
+
+  render() {
+    const modsAndWeights = GetValidModsAndWeightsForItem(this.props.itemState, this.props.context, "rare").sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });
+    const totalWeight = modsAndWeights.reduce( (total, value) => { return total + value.weight }, 0);
+    let modGroups = [];
+    let currentGroupIdx = -1;
+    let currentGroupTableKey = "";
+    for (let modIdx = 0; modIdx < modsAndWeights.length; ++modIdx) {
+      const modId = modsAndWeights[modIdx].modId;
+      const groupedTableKey = this.props.context.modLookupTables.getGroupedTableKeyForMod(modId, this.props.context.mods[modId]);
+      if (groupedTableKey != currentGroupTableKey) {
+        currentGroupIdx++;
+        currentGroupTableKey = groupedTableKey;
+        modGroups.push([]);
+      }
+      modGroups[currentGroupIdx].push(modsAndWeights[modIdx]);
+    }
+
+    return <div className="modList">
+      {
+      modGroups.map((modAndWeightGroup) => { 
+          { return this.renderModGroup(modAndWeightGroup, totalWeight, false) }
+      })
+      }
+  </div>
   }
 }
 
@@ -438,11 +469,11 @@ function RollModValues(modId, context) {
 function GetTierForMod(itemState, modId, context) {
   const mod = context.mods[modId];
   if (mod["is_essence_only"]) {
-    return [0, 1]
+    return [0, 1, 1]
   }
 
   if (mod["generation_type"] === "unique") {
-    return [0, 1]
+    return [0, 1, 1]
   }
 
   let modTier = 0;
@@ -450,15 +481,17 @@ function GetTierForMod(itemState, modId, context) {
   let modCountAtItemLevel = 1;
   const modLevel = mod["required_level"];
   const baseItemTags = GetBaseItemTags(itemState, context);
-  const otherModIds = context.modLookupTables.getGroupedTable(mod["domain"], mod["group"], mod["type"]);
+  const otherModIds = context.modLookupTables.getGroupedTable(mod["domain"], mod["group"], mod["type"], context.modLookupTables.getStatLineIndices(modId));
   for (const otherModId of otherModIds) {
     if (otherModId === modId) {
       continue;
     }
+
     const otherMod = context.mods[otherModId];
     if (otherMod["is_essence_only"]) {
       continue;
     }
+
     if (GetSpawnWeightForMod(otherModId, baseItemTags, context) <= 0) {
       continue;
     }
@@ -600,10 +633,19 @@ function ModIdComparer (a, b, context) {
     return 0;
   }
 
-  const modAFirstStatIdx = context.modLookupTables.getFirstStatLine(a);
-  const modBFirstStartIdx = context.modLookupTables.getFirstStatLine(b);
-  if (modAFirstStatIdx !== modBFirstStartIdx) {
-    return (modAFirstStatIdx - modBFirstStartIdx);
+  const aStatIndices = context.modLookupTables.getStatLineIndices(a);
+  const bStatIndices = context.modLookupTables.getStatLineIndices(b);
+  const aNumStats = aStatIndices.length;
+  const bNumStats = bStatIndices.length;
+  let statIdx = 0;
+  while (statIdx < aNumStats && statIdx < bNumStats) {
+    if (aStatIndices[statIdx] !== bStatIndices[statIdx]) {
+      return aStatIndices[statIdx] - bStatIndices[statIdx];
+    }
+    ++statIdx;
+  }
+  if (aNumStats !== bNumStats) {
+    return aNumStats - bNumStats;
   }
 
   const modARequiredLevel = modA["required_level"];
@@ -1129,7 +1171,7 @@ class TheoryCrafter extends React.Component {
     for (const baseItemId in base_items) {
       if (base_items[baseItemId]["release_state"] === "released") {
         const domain = base_items[baseItemId]["domain"];
-        if (domain === "item" || domain === "flask") {
+        if (domain === "item" || domain === "flask" || domain === "abyss_jewel" || domain === "misc") {
           baseItems[baseItemId] = baseItemId.slice(baseItemId.lastIndexOf('/') + 1);
         }
       }
@@ -1206,8 +1248,16 @@ class TheoryCrafter extends React.Component {
         <div key="rerollDiv"><CraftingButton onClick={ () => this.rerollAction() } enabled={ this.canRerollAction() } label={ this.getRerollLabel() } key="undo" /></div>,
         <div key="rollTest"><CraftingButton onClick={ () => this.rollTest() } enabled={ true } label="Roll 100000" /></div>,
         <div key="sortMods"><input type="checkbox" onChange={(e) => this.handleSortModsToggled(e)} checked={this.state.sortMods} /><span style={{color: 'white'}}>Sort Mods</span></div>,
-        <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} sortMods={this.state.sortMods} key="craftedItem" />,
-        <ModList itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} key="modList" />,
+        <div className="itemAndModListContainer" key="itemAndModListContainer">
+          {[
+            <div className="craftedItemContainer" key="craftedItemContainer">
+              <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} sortMods={this.state.sortMods} key="craftedItem" />
+            </div>,
+            <div className="modListContainer" key="modListContainer">
+              <ModList itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} key="modList" />
+            </div>
+          ]}
+        </div>
     ]
   }
 }

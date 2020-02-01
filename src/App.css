@@ -208,49 +208,79 @@ body {
   margin: 5px;
   font-size: 18px;
   font-family: 'FontinSmallCaps';
+  border-style: solid;
+  border-width: 3px;
+  padding: 1px;
 }
 
 .modList .modGroup {
 }
 
-.modList .modGroup .modLine:first-child {
+.modGroup .modGroupLine {
 /*  background-color: #444; */
-  border-width: 1px 1px 1px 1px;
+  border-width: 2px 2px 2px 2px;
 }
 
-.modList .modLine {
+.modGroup .modGroupLine:hover {
+  background-color: #444;
+}
+
+.modList .modLine, .modList .modGroupLine {
   display: grid;
   grid-template-columns: 50px auto 80px 80px;
   grid-template-rows: auto;
-  border-width: 0px 1px 1px 1px;
   border-style: solid;
   border-color: wheat;
   background-color: #222;  
 }
 
-.modList .modLine .tierString {
+.modList .modLine {
+  border-width: 0px;
+}
+
+.modLine .tierString, .modGroupLine .tierString {
   grid-column-start: 1;
   grid-row: initial;
   padding: 2px;
 }
 
-.modList .modLine .modName {
+.modLine .modName, .modGroupLine .modName {
   grid-column-start: 2;
   grid-row: initial;
   padding: 2px;
 }
 
-.modList .modLine .modWeight {
+.modLine .modWeight, .modGroupLine .modWeight {
   grid-column-start: 3;
   grid-row: initial;
   padding: 2px;
-  border-style: solid;
-  border-width: 0px 1px 0px 1px;
-  border-color: wheat;
 }
 
-.modList .modLine .modProb {
+.modLine .modProb, .modGroupLine .modProb {
   grid-column-start: 4;
   grid-row: initial;
   padding: 2px;
+}
+
+.modList .modLine {
+  color: #ccc;
+}
+
+.modList .modLine:nth-child(even) {
+  background-color:#302F2F;
+}
+
+.itemAndModListContainer {
+  display: grid
+}
+
+.itemAndModListContainer .craftedItemContainer {
+  grid-column-start: 1;
+  grid-row: initial;
+  margin: 0 auto;
+}
+
+.itemAndModListContainer .modListContainer {
+  grid-column-start: 2;
+  grid-row: initial;  
 }
