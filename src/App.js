@@ -1415,6 +1415,8 @@ class TheoryCrafter extends React.Component {
             this.RenderCraftingButton("exalt_inf hunter", "Hunter Exalt"),
             this.RenderCraftingButton("exalt_inf redeemer", "Redeemer Exalt"),
             this.RenderCraftingButton("exalt_inf warlord", "Warlord Exalt"),
+            this.RenderCraftingButton("exalt_inf shaper", "{Shaper Exalt}"),
+            this.RenderCraftingButton("exalt_inf elder", "{Elder Exalt}"),
             this.RenderCraftingButton("annul", "Annulment"),
             this.RenderCraftingButton("bless", "Blessed"),
             this.RenderCraftingButton("divine", "Divine")
