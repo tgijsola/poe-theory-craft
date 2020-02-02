@@ -4,9 +4,12 @@ import TranslationHelper from './Translation.js';
 import seedrandom from 'seedrandom';
 import RareItemNames from './RareItemnames.js';
 import ModGroups from './ModGroups.js';
+
 import base_items from './data/base_items.json';
 import item_classes from './data/item_classes.json';
+import fossils from './data/fossils.json';
 import _mods from './data/mods.json';
+import mod_types from './data/mod_types.json';
 import stat_translations from './data/stat_translations.json';
 import stats from './data/stats.json'
 
@@ -135,19 +138,19 @@ function ModListLine(props) {
   let spanIdx = 0;
   let nameLineElements = props.nameLines.map( (x) => <span key={spanIdx++}>{x}</span>);
   for (let i = 1; i < nameLineElements.length; i += 2) {
-    nameLineElements.splice(i, 0, <br />);
+    nameLineElements.splice(i, 0, <br key={"br_" + i}/>);
   }
   return <div className={props.lineClass}>
-    <div className="modTier">
+    <div className="modTier" key="modTier">
       { props.tierString }
     </div>
-    <div className="modName">
+    <div className="modName" key="modName">
       { nameLineElements }
     </div>
-    <div className="modWeight">
+    <div className="modWeight" key="modWeight">
       { props.weight }
     </div>
-    <div className="modProb">
+    <div className="modProb" key="modProb">
       { props.prob }
     </div>
   </div>;
@@ -169,7 +172,7 @@ class ModList extends React.Component {
     const groupName = TranslationHelper.TranslateModForGroup(stat_translations, this.props.context.mods[modAndWeightGroup[0].modId]);
     const elementList = [<ModListLine tierString = { collapsed ? "▶" : "▼" } lineClass="modGroupLine" nameLines={groupName} weight={groupWeight} prob={(groupWeight / totalWeight).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={groupName} />];
     elementList.push(...this.renderModsInModGroup(modAndWeightGroup, totalWeight));
-    return <div className="modGroup">
+    return <div className="modGroup" key={modAndWeightGroup[0].modId}>
       {
         elementList
       }
@@ -177,7 +180,16 @@ class ModList extends React.Component {
   }
 
   render() {
-    const modsAndWeights = GetValidModsAndWeightsForItem(this.props.itemState, this.props.context, "rare").sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });
+    let modsAndWeights = null;
+    // TODO: Expand this to handle any mode
+    if (this.props.fossilTypes && this.props.fossilTypes.length > 0) {
+      const weightParameters = GetWeightParametersForFossils(this.props.fossilTypes);
+      modsAndWeights = GetValidModsAndWeightsForItem(this.props.itemState, this.props.context, { ...weightParameters, ignoreAffixLimits : true, ignoreExistingGroups : true }).sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });      
+    }
+    else {
+      modsAndWeights = GetValidModsAndWeightsForItem(this.props.itemState, this.props.context, { rarityOverride : "rare" }).sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });
+    }
+
     const totalWeight = modsAndWeights.reduce( (total, value) => { return total + value.weight }, 0);
     let modGroups = [];
     let currentGroupIdx = -1;
@@ -185,7 +197,7 @@ class ModList extends React.Component {
     for (let modIdx = 0; modIdx < modsAndWeights.length; ++modIdx) {
       const modId = modsAndWeights[modIdx].modId;
       const groupedTableKey = this.props.context.modLookupTables.getGroupedTableKeyForMod(modId, this.props.context.mods[modId]);
-      if (groupedTableKey != currentGroupTableKey) {
+      if (groupedTableKey !== currentGroupTableKey) {
         currentGroupIdx++;
         currentGroupTableKey = groupedTableKey;
         modGroups.push([]);
@@ -322,60 +334,85 @@ function CanModBeAddedToItem(modId, itemState, context, hasPrefixSlots, hasSuffi
   return true;
 }
 
-function GetValidModsAndWeightsForItem(itemState, context, rarityOverride = "") {
-  const tags = GetItemTags(itemState, context);
+function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
   let validMods = [];
-  const rarity = rarityOverride !== "" ? rarityOverride : itemState.rarity;
-  const hasPrefixSlots = GetPrefixLimitForRarity(itemState.baseItemId, rarity) > GetPrefixCount(itemState, context);
-  const hasSuffixSlots = GetSuffixLimitForRarity(itemState.baseItemId, rarity) > GetSuffixCount(itemState, context);
+
+  const tags = GetItemTags(itemState, context);
+
+  const rarity = ("rarityOverride" in extendedParameters) ? extendedParameters.rarityOverride : itemState.rarity;
+  const ignoreAffixLimits = ("ignoreAffixLimits" in extendedParameters) ? extendedParameters.ignoreAffixLimits : false;
+  const requiredPositiveWeightTag = ("requiredPositiveWeightTag" in extendedParameters) ? extendedParameters.requiredPositiveWeightTag : null;
+  const negativeWeightMultipliers = ("negativeWeightMultipliers" in extendedParameters) ? extendedParameters.negativeWeightMultipliers : null;
+  const positiveWeightMultipliers = ("positiveWeightMultipliers" in extendedParameters) ? extendedParameters.positiveWeightMultipliers : null;
+  const ignoreExistingGroups = ("ignoreExistingGroups" in extendedParameters) ? extendedParameters.ignoreExistingGroups : false;
+  const addedMods = ("addedMods" in extendedParameters) ? extendedParameters.addedMods : null;
+
+  const hasPrefixSlots = ignoreAffixLimits || (GetPrefixLimitForRarity(itemState.baseItemId, rarity) > GetPrefixCount(itemState, context));
+  const hasSuffixSlots = ignoreAffixLimits || (GetSuffixLimitForRarity(itemState.baseItemId, rarity) > GetSuffixCount(itemState, context));
   let existingModGroups = new Set();
-  for (const affix of itemState.affixes) {
-    const existingMod = context.mods[affix.id];
-    existingModGroups.add(existingMod["group"]);
+  if (!ignoreExistingGroups)
+  {
+    for (const affix of itemState.affixes) {
+      const existingMod = context.mods[affix.id];
+      existingModGroups.add(existingMod["group"]);
+    }
   }
 
-  const modIds = context.modLookupTables.getDomainTable(base_items[itemState.baseItemId]["domain"]);
+  let modIds = context.modLookupTables.getDomainTable(base_items[itemState.baseItemId]["domain"]);
+  if (addedMods) {
+    modIds = [...modIds, ...addedMods];
+  }
+
   for (const modId of modIds) {
+    if (requiredPositiveWeightTag) {
+      const mod = context.mods[modId];
+      if (!(mod["spawn_weights"].find(x => x["tag"] === requiredPositiveWeightTag && x["weight"] > 0))) {
+        continue;
+      }
+    }
+
     if (!CanModBeAddedToItem(modId, itemState, context, hasPrefixSlots, hasSuffixSlots, existingModGroups)) {
       continue;
+    }
+
+    let spawnWeight = GetSpawnWeightForMod(modId, tags, context);
+    if (spawnWeight <= 0) {
+      continue;
+    }
+
+    if (negativeWeightMultipliers) {
+      const modTags = context.modLookupTables.getTags(modId);
+      for (const modTag of modTags) {
+        if (modTag in negativeWeightMultipliers) {
+          spawnWeight = spawnWeight * negativeWeightMultipliers[modTag];
+        }
+      }
+
+      if (spawnWeight <= 0) {
+        continue;
+      }
+    }
+
+    if (positiveWeightMultipliers) {
+      //   NOTE - It's not clear to me how the game handles multiple applicable positive weight multipliers
+      //
+      // For example, if you apply both Aberrant (+chaos:10x) and Serrated (+attack:10x) on the AddedChaosSuffix
+      // mod (attack, chaos), is the total multiplication 10 * 10 = 100x? Or 10 + 10 = 20x?
+      //
+      // It's a little more conservative, but I'm going with the additive option here until proven otherwise.
+
+      const modTags = context.modLookupTables.getTags(modId);
+      let totalPositiveWeightMultiplier = 0;
+      for (const modTag of modTags) {
+        if (modTag in positiveWeightMultipliers) {
+          totalPositiveWeightMultiplier = totalPositiveWeightMultiplier + positiveWeightMultipliers[modTag];
+        }
+      }
+      if (totalPositiveWeightMultiplier > 0) {
+        spawnWeight = spawnWeight * totalPositiveWeightMultiplier;
+      }
     }
     
-    const spawnWeight = GetSpawnWeightForMod(modId, tags, context);
-    if (spawnWeight <= 0) {
-      continue;
-    }
-
-    validMods.push({modId: modId, weight: spawnWeight});
-  }
-  return validMods;
-}
-
-function GetValidModsAndWeightsForItemWithPositiveWeightTag(itemState, tag, context) {
-  const tags = GetItemTags(itemState, context);
-  let validMods = [];
-  const hasPrefixSlots = GetPrefixLimitForRarity(itemState.baseItemId, itemState.rarity) > GetPrefixCount(itemState, context);
-  const hasSuffixSlots = GetSuffixLimitForRarity(itemState.baseItemId, itemState.rarity) > GetSuffixCount(itemState, context);
-  let existingModGroups = new Set();
-  for (const affix of itemState.affixes) {
-    const existingMod = context.mods[affix.id];
-    existingModGroups.add(existingMod["group"]);
-  }
-
-  for (const modId in context.mods) {
-    const mod = context.mods[modId];
-    if (!(mod["spawn_weights"].find(x => x["tag"] === tag && x["weight"] > 0))) {
-      continue;
-    }
-
-    if (!CanModBeAddedToItem(modId, itemState, context, hasPrefixSlots, hasSuffixSlots, existingModGroups)) {
-      continue;
-    }
-
-    const spawnWeight = GetSpawnWeightForMod(modId, tags, context);
-    if (spawnWeight <= 0) {
-      continue;
-    }
-
     validMods.push({modId: modId, weight: spawnWeight});
   }
   return validMods;
@@ -608,9 +645,9 @@ function AddRandomModFromListAndWeights(itemState, modsAndWeights, context) {
   return [true, newItemState];  
 }
 
-function AddRandomMod(itemState, context) {
+function AddRandomMod(itemState, context, extendedParameters = {}) {
   let newItemState = cloneItemState(itemState);
-  const modsAndWeights = GetValidModsAndWeightsForItem(newItemState, context);
+  const modsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, extendedParameters);
   return AddRandomModFromListAndWeights(itemState, modsAndWeights, context);
 }
 
@@ -746,7 +783,7 @@ function CanAlterationItem(itemState, context) {
 
 function AlterationItem(itemState, context) {
   if (!CanAlterationItem(itemState, context)) {
-    return [0, itemState];
+    return [false, itemState];
   }
 
   let newItemState = { ...cloneItemState(itemState), affixes : [] };
@@ -907,7 +944,7 @@ function CanExaltedWithInfluenceItem(itemState, context, influence) {
 
   let [ , newItemState] = AddInfluenceToItem(itemState, influence);
   const influenceTag = GetInfluenceTag(newItemState.baseItemId, influence);
-  const validMods = GetValidModsAndWeightsForItemWithPositiveWeightTag(newItemState, influenceTag, context);
+  const validMods = GetValidModsAndWeightsForItem(newItemState, context, { requiredPositiveWeightTag : influenceTag });
   if (validMods.length === 0) {
     return false;
   }
@@ -917,12 +954,12 @@ function CanExaltedWithInfluenceItem(itemState, context, influence) {
 
 function ExaltedWithInfluenceItem(itemState, context, influence) {
   if (!CanExaltedWithInfluenceItem(itemState, context, influence)) {
-    return false;
+    return [false, itemState];
   }
 
   let [ , newItemState] = AddInfluenceToItem(itemState, influence);
   const influenceTag = GetInfluenceTag(newItemState.baseItemId, influence);
-  const validMods = GetValidModsAndWeightsForItemWithPositiveWeightTag(newItemState, influenceTag, context);
+  const validMods = GetValidModsAndWeightsForItem(newItemState, context, { requiredPositiveWeightTag : influenceTag });
   return AddRandomModFromListAndWeights(newItemState, validMods, context);
 }
 
@@ -966,7 +1003,7 @@ function CanBlessedItem(itemState, context) {
 
 function BlessedItem(itemState, context) {
   if (!CanBlessedItem(itemState, context)) {
-    return false;
+    return [false, itemState];
   }
 
   let newItemState = cloneItemState(itemState);
@@ -990,13 +1027,126 @@ function CanDivineItem(itemState, context) {
 
 function DivineItem(itemState, context) {
   if (!CanDivineItem(itemState, context)) {
-    return false;
+    return [false, itemState];
   }
 
   let newItemState = cloneItemState(itemState);
   for (let affix of newItemState.affixes) {
     affix.values = RollModValues(affix.id, context);
   }
+  return [true, newItemState];
+}
+
+// eslint-disable-next-line no-unused-vars
+function CanFossilItem(itemState, context) {
+  if (itemState.corrupted) {
+    return false;
+  }
+
+  const fossilTypes = Array.prototype.slice.call(arguments, 2);
+  if (fossilTypes.length === 0) {
+    return false;
+  }
+
+  for (const fossilId of fossilTypes) {
+    const fossil = fossils[fossilId];
+
+    if (fossil["allowed_tags"].length > 0) {
+      const baseItem = base_items[itemState.baseItemId];
+      let hasAllowedTag = false;
+      for (const allowedTag of fossil["allowed_tags"]) {
+        if (baseItem["tags"].includes(allowedTag)) {
+          hasAllowedTag = true;
+          break;
+        }
+      }
+      if (!hasAllowedTag) {
+        return false;
+      }
+    }
+
+    if (fossil["forbidden_tags"].length > 0) {
+      const baseItem = base_items[itemState.baseItemId];
+      for (const forbiddenTag of fossil["allowed_tags"]) {
+        if (baseItem["tags"].includes(forbiddenTag)) {
+          return false;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
+function GetWeightParametersForFossils(fossilTypes) {
+  let addedMods = [];
+  let forcedMods = [];
+  let negativeTagMultipliers = {};
+  let positiveTagMultipliers = {};
+  let rollsLucky = false;
+  for (const fossilId of fossilTypes) {
+    const fossil = fossils[fossilId];
+    addedMods = [ ...addedMods, ...fossil["added_mods"] ];
+    for (const negativeWeightMod of fossil["negative_mod_weights"]) {
+      const tag = negativeWeightMod["tag"];
+      const weightMultiplier = negativeWeightMod["weight"] / 100.0;
+      if (tag in negativeTagMultipliers) {
+        negativeTagMultipliers[tag] = negativeTagMultipliers[tag] * weightMultiplier;
+      }
+      else {
+        negativeTagMultipliers[tag] = weightMultiplier;
+      }
+    }
+    for (const positiveWeightMod of fossil["positive_mod_weights"]) {
+      const tag = positiveWeightMod["tag"];
+      const weightMultiplier = positiveWeightMod["weight"] / 100.0;
+      if (tag in positiveTagMultipliers) {
+        positiveTagMultipliers[tag] = positiveTagMultipliers[tag] + weightMultiplier;
+      }
+      else {
+        positiveTagMultipliers[tag] = weightMultiplier;
+      }
+    }
+    forcedMods = [ ...forcedMods, ...fossil["forced_mods"] ];
+    rollsLucky = rollsLucky || fossil["rolls_lucky"];
+  }
+
+  return {
+    negativeWeightMultipliers : negativeTagMultipliers,
+    positiveWeightMultipliers : positiveTagMultipliers,
+    addedMods : addedMods,
+  }
+}
+
+function FossilItem(itemState, context) {
+  if (!CanFossilItem(...arguments)) {
+    return [false, itemState];
+  }
+
+  // NOTE - It's not immediately clear to me what the effect of combining
+  // two fossils that have conflicting negative and positive mod weights,
+  // so for now I'm multiplying them together.
+  //
+  // For the case of aetheric / serrated, this results in both having a 
+  // weight multiplier of 1.5, which feels about right. 
+
+  const fossilTypes = Array.prototype.slice.call(arguments, 2);
+  const weightParameters = GetWeightParametersForFossils(fossilTypes);
+
+  const numMods = RollRareAffixCount(itemState.baseItemId, context.rng);
+  let newItemState = { ...cloneItemState(itemState), rarity : "rare", generatedName : RollRareName(itemState, context.rng), affixes : [] };  
+  for (let i = 0; i < numMods; ++i) {
+    const validMods = GetValidModsAndWeightsForItem(newItemState, context, weightParameters);
+    if (validMods.length === 0) {
+      break;
+    }
+    const result = AddRandomModFromListAndWeights(newItemState, validMods, context);
+    if (result[0] == false) {
+      break;
+    }
+    newItemState = result[1];
+  }
+
   return [true, newItemState];
 }
 
@@ -1007,7 +1157,7 @@ function CraftingButton(props) {
 class TheoryCrafterContext {
   constructor(modDatabase, rng) {
     this.mods = modDatabase;
-    this.modLookupTables = ModGroups.ParseModGroups(modDatabase, stats);
+    this.modLookupTables = ModGroups.ParseModGroups(modDatabase, stats, mod_types);
     this.rng = rng;
   }
 }
@@ -1025,13 +1175,11 @@ class TheoryCrafter extends React.Component {
       "alch" : CanAlchemyItem,
       "chaos" : CanChaosItem,
       "exalt" : CanExaltedItem,
-      "exalt_crusader" : (itemState, context) => CanExaltedWithInfluenceItem(itemState, context, "crusader"),
-      "exalt_hunter" : (itemState, context) => CanExaltedWithInfluenceItem(itemState, context, "hunter"),
-      "exalt_redeemer" : (itemState, context) => CanExaltedWithInfluenceItem(itemState, context, "redeemer"),
-      "exalt_warlord" : (itemState, context) => CanExaltedWithInfluenceItem(itemState, context, "warlord"),
+      "exalt_inf" : CanExaltedWithInfluenceItem,
       "annul" : CanAnnulmentItem,
       "bless" : CanBlessedItem,
       "divine" : CanDivineItem,
+      "fossil" : CanFossilItem,
     }
 
     this.actionMap = {
@@ -1043,13 +1191,11 @@ class TheoryCrafter extends React.Component {
       "alch" : AlchemyItem,
       "chaos" : ChaosItem,
       "exalt" : ExaltedItem,
-      "exalt_crusader" : (itemState, context) => ExaltedWithInfluenceItem(itemState, context, "crusader"),
-      "exalt_hunter" : (itemState, context) => ExaltedWithInfluenceItem(itemState, context, "hunter"),
-      "exalt_redeemer" : (itemState, context) => ExaltedWithInfluenceItem(itemState, context, "redeemer"),
-      "exalt_warlord" : (itemState, context) => ExaltedWithInfluenceItem(itemState, context, "warlord"),
+      "exalt_inf" : ExaltedWithInfluenceItem,
       "annul" : AnnulmentItem,
       "bless" : BlessedItem,
       "divine" : DivineItem,
+      "fossil" : FossilItem,
     }
 
     this.theoryCrafterContext = new TheoryCrafterContext(_mods, seedrandom());
@@ -1065,7 +1211,8 @@ class TheoryCrafter extends React.Component {
       lastCommand : "",
       selectedBaseId : initItemState.baseItemId,
       selectedBaseLevel : initItemState.level,
-      sortMods : false
+      sortMods : false,
+      selectedFossils : [],
     };
   }
 
@@ -1113,14 +1260,11 @@ class TheoryCrafter extends React.Component {
     }
     const action = this.state.itemStateHistory[this.state.itemStateHistoryIdx].action;
     const previousItemState = this.state.itemStateHistory[this.state.itemStateHistoryIdx - 1].itemState;
-    const canPerformAction = this.testMap[action](previousItemState, this.theoryCrafterContext);
+    const canPerformAction = this.canPerformAction(action, previousItemState);
     if (!canPerformAction) {
       return;
     }
-    const result = this.actionMap[action](previousItemState, this.theoryCrafterContext);
-    if (result[0]) {
-      this.setState(this.insertAndCutStateAt(result[1], action, this.state.itemStateHistoryIdx));
-    }
+    this.performAction(action, previousItemState, this.state.itemStateHistoryIdx);
   }
 
   canRedoState() {
@@ -1151,14 +1295,29 @@ class TheoryCrafter extends React.Component {
     return this.insertAndCutStateAt(newState, actionName, this.state.itemStateHistoryIdx + 1);
   }
 
-  canPerformAction(actionName) {
-    return this.testMap[actionName](this.getState(), this.theoryCrafterContext);
+  canPerformAction(actionName, itemState) {
+    return this.splitAndTestAction(actionName, itemState);
   }
 
-  performAction(actionName) {
-    const result = this.actionMap[actionName](this.getState(), this.theoryCrafterContext);
+  splitAndTestAction(actionName, itemState) {
+    const splitAction = actionName.split(" ");
+    return this.testMap[splitAction[0]](itemState, this.theoryCrafterContext, ...(splitAction.slice(1)));
+  }
+
+  performAction(actionName, itemState, splitLocationOverride = null) {
+    return this.splitAndExecuteAction(actionName, itemState, splitLocationOverride);
+  }
+
+  splitAndExecuteAction(actionName, itemState, splitLocationOverride = null) {
+    const splitAction = actionName.split(" ");
+    const result = this.actionMap[splitAction[0]](itemState, this.theoryCrafterContext, ...(splitAction.slice(1)));
     if (result[0]) {
-      this.setState(this.insertAndCutState(result[1], actionName));
+      if (splitLocationOverride) {
+        this.setState(this.insertAndCutStateAt(result[1], actionName, splitLocationOverride));
+      }
+      else {
+        this.setState(this.insertAndCutState(result[1], actionName));
+      }
     }
   }
 
@@ -1199,7 +1358,25 @@ class TheoryCrafter extends React.Component {
   }
 
   RenderCraftingButton(actionName, label) {
-    return <CraftingButton onClick={ () => this.performAction(actionName) } enabled={ this.canPerformAction(actionName) } label={label} key={actionName} />
+    return <CraftingButton onClick={ () => this.performAction(actionName, this.getState()) } enabled={ this.canPerformAction(actionName, this.getState()) } label={label} key={actionName} />
+  }
+
+  RenderFossilSelector(fossilId, label) {
+    const checked = this.state.selectedFossils.includes(fossilId);
+    const enabled = this.state.selectedFossils.length < 4 || checked;
+    return <CraftingButton onClick={ () => this.handleFossilSelectorClicked(fossilId) } enabled={enabled} key={fossilId} label={(checked ? "☒" : "☐") + " " + label + " Fossil"} />
+  }
+
+  handleFossilSelectorClicked(fossilId) {
+    const idx = this.state.selectedFossils.findIndex((x) => { return x === fossilId });
+    if (idx >= 0) {
+      const newState = { ...this.state };
+      newState.selectedFossils.splice(idx, 1);
+      this.setState(newState);
+    }
+    else {
+      this.setState({ ...this.state, selectedFossils : [...this.state.selectedFossils, fossilId] });
+    }
   }
 
   handleSortModsToggled(e) {
@@ -1234,13 +1411,47 @@ class TheoryCrafter extends React.Component {
             this.RenderCraftingButton("alch", "Alchemy"),
             this.RenderCraftingButton("chaos", "Chaos"),
             this.RenderCraftingButton("exalt", "Exalted"),
-            this.RenderCraftingButton("exalt_crusader", "Crusader Exalt"),
-            this.RenderCraftingButton("exalt_hunter", "Hunter Exalt"),
-            this.RenderCraftingButton("exalt_redeemer", "Redeemer Exalt"),
-            this.RenderCraftingButton("exalt_warlord", "Warlord Exalt"),
+            this.RenderCraftingButton("exalt_inf crusader", "Crusader Exalt"),
+            this.RenderCraftingButton("exalt_inf hunter", "Hunter Exalt"),
+            this.RenderCraftingButton("exalt_inf redeemer", "Redeemer Exalt"),
+            this.RenderCraftingButton("exalt_inf warlord", "Warlord Exalt"),
             this.RenderCraftingButton("annul", "Annulment"),
             this.RenderCraftingButton("bless", "Blessed"),
             this.RenderCraftingButton("divine", "Divine")
+          ] }
+        </div>,
+        <div key="fossilSelectors">
+          { [
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingAbyss", "Hollow"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingAttackMods", "Serrated"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingBleedPoison", "Corroded"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingCasterMods", "Aetheric"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingChaos", "Aberrant"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingCold", "Frigid"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingCorruptEssence", "Glyphic"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingDefences", "Dense"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingElemental", "Prismatic"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingEnchant", "Enchanted"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingFire", "Scorched"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingGemLevel", "Faceted"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingLife", "Pristine"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingLightning", "Metallic"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingLuckyModRolls", "Sanctified"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingMana", "Lucent"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingMinionsAuras", "Bound"),
+//            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingMirror", "Fractured"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingPhysical", "Jagged"),
+//            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingQuality", "Perfect"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingRandom", "Tangled"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingSellPrice", "Gilded"),
+//            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingSockets", "Encrusted"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingSpeed", "Shuddering"),
+            this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingVaal", "Bloodstained"),
+          ] }
+        </div>,
+        <div key="fossilButton">
+          { [
+            this.RenderCraftingButton(["fossil", ...this.state.selectedFossils].join(" "), "Fossil")
           ] }
         </div>,
         <div key="undoDiv"><CraftingButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label={ this.getUndoLabel() } key="undo" /></div>,
@@ -1254,7 +1465,7 @@ class TheoryCrafter extends React.Component {
               <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} sortMods={this.state.sortMods} key="craftedItem" />
             </div>,
             <div className="modListContainer" key="modListContainer">
-              <ModList itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} key="modList" />
+              <ModList fossilTypes={this.state.selectedFossils} itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} key="modList" />
             </div>
           ]}
         </div>

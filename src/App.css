@@ -222,6 +222,7 @@ body {
 .modGroup .modGroupLine {
 /*  background-color: #444; */
   border-width: 2px 2px 2px 2px;
+  margin-top: 8px;
 }
 
 .modGroup .modGroupLine:hover {
@@ -282,7 +283,8 @@ body {
 }
 
 .itemAndModListContainer {
-  display: grid
+  display: grid;
+  grid-template-columns: 600px 800px;  
 }
 
 .itemAndModListContainer .craftedItemContainer {

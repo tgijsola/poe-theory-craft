@@ -57,17 +57,24 @@ export class ModLookupTables {
         this.domainTable = {};
         this.groupedModTable = {};
         this.statLineIndices = {};
+        this.tags = {};
     }
 
-    add(modId, domain, group, type, statLineIndices) {
+    add(modId, domain, group, type, statLineIndices, tags) {
         this.addToDomainTable(modId, domain);
         this.addToGroupedModTable(modId, domain, group, type, statLineIndices);
         this.addStatLineIndices(modId, statLineIndices);
+        this.addTags(modId, tags);
     }
 
     addStatLineIndices(modId, statLineIndices)
     {
         this.statLineIndices[modId] = statLineIndices;
+    }
+
+    addTags(modId, tags) 
+    {
+        this.tags[modId] = tags;
     }
 
     addToDomainTable(modId, domain) {
@@ -107,6 +114,10 @@ export class ModLookupTables {
 
     getStatLineIndices(modId) {
         return this.statLineIndices[modId];
+    }
+
+    getTags(modId) {
+        return this.tags[modId];
     }
 }
 
@@ -150,7 +161,7 @@ export class ModLookupTables {
 //     }
 // }
 
-export function ParseModGroups(mods, stats) {
+export function ParseModGroups(mods, stats, mod_types) {
     let modLookupTables = new ModLookupTables();
 
     let statKeyToIndex = {};
@@ -166,7 +177,8 @@ export function ParseModGroups(mods, stats) {
         for (const stat of mod["stats"]) {
             statIndices.push(statKeyToIndex[stat.id]);
         }
-        modLookupTables.add(modId, mod["domain"], mod["group"], mod["type"], statIndices);
+        let modTags = [ ...mod_types[mod["type"]]["tags"] ];
+        modLookupTables.add(modId, mod["domain"], mod["group"], mod["type"], statIndices, modTags);
 
         // // Filter mods from unaccepted domains
         // if (!validModDomains.has(mod["domain"])) {
