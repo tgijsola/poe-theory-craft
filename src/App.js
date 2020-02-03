@@ -134,65 +134,115 @@ class CraftedItem extends React.Component {
   }
 }
 
-function ModListLine(props) {
-  let spanIdx = 0;
-  let nameLineElements = props.nameLines.map( (x) => <span key={spanIdx++}>{x}</span>);
-  for (let i = 1; i < nameLineElements.length; i += 2) {
-    nameLineElements.splice(i, 0, <br key={"br_" + i}/>);
+class ModListGroupLine extends React.Component {
+  // eslint-disable-next-line no-unused-vars
+  shouldComponentUpdate(nextProps, nextState) {
+    return this.props.collapsed !== nextProps.collapsed
+      || this.props.modWeight !== nextProps.modWeight
+      || this.props.prob !== nextProps.prob;
+  }  
+  render() {
+    let spanIdx = 0;
+    let nameLineElements = this.props.nameLines.map( (x) => <span key={spanIdx++}>{x}</span>);
+    for (let i = 1; i < nameLineElements.length; i += 2) {
+      nameLineElements.splice(i, 0, <br key={"br_" + i}/>);
+    }
+    return <div className="modGroupLine" onClick={this.props.onGroupClicked}>
+      <div className="modTier" key="modTier">
+        { this.props.collapsed ? "▶" : "▼" }
+      </div>
+      <div className="modName" key="modName">
+        { nameLineElements }
+      </div>
+      <div className="modWeight" key="modWeight">
+        { this.props.weight }
+      </div>
+      <div className="modProb" key="modProb">
+        { this.props.prob }
+      </div>
+    </div>;
   }
-  return <div className={props.lineClass}>
-    <div className="modTier" key="modTier">
-      { props.tierString }
-    </div>
-    <div className="modName" key="modName">
-      { nameLineElements }
-    </div>
-    <div className="modWeight" key="modWeight">
-      { props.weight }
-    </div>
-    <div className="modProb" key="modProb">
-      { props.prob }
-    </div>
-  </div>;
 }
 
-class ModList extends React.Component {
-  renderModsInModGroup(modAndWeightGroup, totalWeight) {
-    return modAndWeightGroup.map((x) => {
+class ModListModLine extends React.Component {
+  // eslint-disable-next-line no-unused-vars
+  shouldComponentUpdate(nextProps, nextState) {
+    return this.props.modTier !== nextProps.modTier
+      || this.props.modWeight !== nextProps.modWeight
+      || this.props.prob !== nextProps.prob;
+  }  
+  render() {
+    let spanIdx = 0;
+    let nameLineElements = this.props.nameLines.map( (x) => <span key={spanIdx++}>{x}</span>);
+    for (let i = 1; i < nameLineElements.length; i += 2) {
+      nameLineElements.splice(i, 0, <br key={"br_" + i}/>);
+    }
+    return <div className="modLine">
+      <div className="modTier" key="modTier">
+        { this.props.tierString }
+      </div>
+      <div className="modName" key="modName">
+        { nameLineElements }
+      </div>
+      <div className="modWeight" key="modWeight">
+        { this.props.weight }
+      </div>
+      <div className="modProb" key="modProb">
+        { this.props.prob }
+      </div>
+    </div>;
+  }
+}
+
+class ModGroup extends React.Component {
+  renderModsInModGroup() {
+    return this.props.modAndWeightGroup.map((x) => {
       const modData = this.props.context.mods[x.modId];
       const modWeight = x.weight;
       const modName = TranslationHelper.TranslateMod(stat_translations, modData);
       const modTierInfo = GetTierForMod(this.props.itemState, x.modId, this.props.context);
-      return <ModListLine lineClass="modLine" tierString={modData["generation_type"].slice(0, 1) + (modTierInfo[0] + 1)} nameLines={modName} weight={modWeight} prob={(modWeight / totalWeight).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={x.modId} />
+      return <ModListModLine lineClass="modLine" context={this.props.context} tierString={modData["generation_type"].slice(0, 1) + (modTierInfo[0] + 1)} nameLines={modName} weight={modWeight} prob={(modWeight / this.props.totalWeight).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={x.modId} />
     });
   }
 
-  renderModGroup(modAndWeightGroup, totalWeight, collapsed) {
-    const groupWeight = modAndWeightGroup.reduce((total, value) => { return total + value.weight }, 0);
-    const groupName = TranslationHelper.TranslateModForGroup(stat_translations, this.props.context.mods[modAndWeightGroup[0].modId]);
-    const elementList = [<ModListLine tierString = { collapsed ? "▶" : "▼" } lineClass="modGroupLine" nameLines={groupName} weight={groupWeight} prob={(groupWeight / totalWeight).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={groupName} />];
-    elementList.push(...this.renderModsInModGroup(modAndWeightGroup, totalWeight));
-    return <div className="modGroup" key={modAndWeightGroup[0].modId}>
+  render() {
+    const groupWeight = this.props.modAndWeightGroup.reduce((total, value) => { return total + value.weight }, 0);
+    const groupName = this.props.groupName;
+//    const groupName = TranslationHelper.TranslateModForGroup(stat_translations, this.props.context.mods[this.props.modAndWeightGroup[0].modId]);
+    const elementList = [<ModListGroupLine collapsed={this.props.collapsed} onGroupClicked={() => this.props.onGroupClicked(this.props.groupKey)} lineClass="modGroupLine" context={this.props.context} nameLines={groupName} weight={groupWeight} prob={(groupWeight / this.props.totalWeight).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={groupName} />];
+    if (!this.props.collapsed) {
+      elementList.push(...this.renderModsInModGroup(this.props.modAndWeightGroup, this.props.totalWeight));
+    }
+    return <div className="modGroup" key={this.props.groupKey}>
       {
         elementList
       }
-      </div>
+      </div>      
   }
+}
 
+class ModList extends React.Component {
   render() {
+    let modGroups = [];    
     let modsAndWeights = null;
     // TODO: Expand this to handle any mode
     if (this.props.fossilTypes && this.props.fossilTypes.length > 0) {
       const weightParameters = GetWeightParametersForFossils(this.props.fossilTypes);
       modsAndWeights = GetValidModsAndWeightsForItem(this.props.itemState, this.props.context, { ...weightParameters, ignoreAffixLimits : true, ignoreExistingGroups : true }).sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });      
+      for (const forcedModList of weightParameters.forcedModLists) {
+        const forcedModsAndWeights = GetValidModsAndWeightsForItem(this.props.itemState, this.props.context, { ...weightParameters, forcedModIds : forcedModList.modIds, ignoreAffixLimits : true, ignoreExistingGroups : true }).sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });
+        const forcedTotalWeight = forcedModsAndWeights.reduce( (total, value) => { return total + value.weight }, 0);
+        if (forcedModsAndWeights.length > 0) {
+          modGroups.push({groupName: ["From " + fossils[forcedModList.fossilId]["name"]], groupKey: forcedModList.fossilId, totalWeight: forcedTotalWeight, modsAndWeights: forcedModsAndWeights});
+        }
+      }
     }
     else {
       modsAndWeights = GetValidModsAndWeightsForItem(this.props.itemState, this.props.context, { rarityOverride : "rare" }).sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });
     }
 
     const totalWeight = modsAndWeights.reduce( (total, value) => { return total + value.weight }, 0);
-    let modGroups = [];
-    let currentGroupIdx = -1;
+    let currentGroupIdx = modGroups.length - 1;
     let currentGroupTableKey = "";
     for (let modIdx = 0; modIdx < modsAndWeights.length; ++modIdx) {
       const modId = modsAndWeights[modIdx].modId;
@@ -200,18 +250,17 @@ class ModList extends React.Component {
       if (groupedTableKey !== currentGroupTableKey) {
         currentGroupIdx++;
         currentGroupTableKey = groupedTableKey;
-        modGroups.push([]);
+        const groupName = TranslationHelper.TranslateModForGroup(stat_translations, this.props.context.mods[modId]);
+        modGroups.push({groupName: groupName, groupKey: groupedTableKey, totalWeight: totalWeight, modsAndWeights: []});
       }
-      modGroups[currentGroupIdx].push(modsAndWeights[modIdx]);
+      modGroups[currentGroupIdx].modsAndWeights.push(modsAndWeights[modIdx]);
     }
 
     return <div className="modList">
       {
-      modGroups.map((modAndWeightGroup) => { 
-          { return this.renderModGroup(modAndWeightGroup, totalWeight, false) }
-      })
+        modGroups.map((modAndWeightGroup) => <ModGroup groupName={modAndWeightGroup.groupName} onGroupClicked={this.props.onGroupClicked} modAndWeightGroup={modAndWeightGroup.modsAndWeights} groupKey={modAndWeightGroup.groupKey} totalWeight={modAndWeightGroup.totalWeight} itemState={this.props.itemState} context={this.props.context} collapsed={this.props.collapsedGroups.has(modAndWeightGroup.groupKey)} key={modAndWeightGroup.groupKey}/>)
       }
-  </div>
+    </div>
   }
 }
 
@@ -300,6 +349,7 @@ function GetAffixLimit(itemState) {
 function CanModBeAddedToItem(modId, itemState, context, hasPrefixSlots, hasSuffixSlots, existingModGroups) {
   const mod = context.mods[modId];
 
+  // TODO: Investigate this! It's valid in some cases and not valid in others (added mods from delve fossils)
   /*
   const baseItem = base_items[itemState.baseItemId];
   if (mod["domain"] !== baseItem["domain"]) {
@@ -346,6 +396,7 @@ function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
   const positiveWeightMultipliers = ("positiveWeightMultipliers" in extendedParameters) ? extendedParameters.positiveWeightMultipliers : null;
   const ignoreExistingGroups = ("ignoreExistingGroups" in extendedParameters) ? extendedParameters.ignoreExistingGroups : false;
   const addedMods = ("addedMods" in extendedParameters) ? extendedParameters.addedMods : null;
+  const forcedModIds = ("forcedModIds" in extendedParameters) ? extendedParameters.forcedModIds : null;
 
   const hasPrefixSlots = ignoreAffixLimits || (GetPrefixLimitForRarity(itemState.baseItemId, rarity) > GetPrefixCount(itemState, context));
   const hasSuffixSlots = ignoreAffixLimits || (GetSuffixLimitForRarity(itemState.baseItemId, rarity) > GetSuffixCount(itemState, context));
@@ -358,9 +409,15 @@ function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
     }
   }
 
-  let modIds = context.modLookupTables.getDomainTable(base_items[itemState.baseItemId]["domain"]);
-  if (addedMods) {
-    modIds = [...modIds, ...addedMods];
+  let modIds = [];
+  if (forcedModIds) {
+    modIds = [...forcedModIds];
+  }
+  else {
+    modIds = context.modLookupTables.getDomainTable(base_items[itemState.baseItemId]["domain"]);
+    if (addedMods) {
+      modIds = [...modIds, ...addedMods];
+    }
   }
 
   for (const modId of modIds) {
@@ -494,11 +551,18 @@ function GetItemTags(itemState, context) {
   return tags;
 }
 
-function RollModValues(modId, context) {
+function RollModValues(modId, rollsLucky, context) {
   let statRolls = [];
   const mod = context.mods[modId];
   for (const stat of mod["stats"]) {
-    statRolls.push(randRange(context.rng, stat["min"], stat["max"]));
+    if (rollsLucky) {
+      const rollOne = randRange(context.rng, stat["min"], stat["max"]);
+      const rollTwo = randRange(context.rng, stat["min"], stat["max"]);
+      statRolls.push(Math.max(rollOne, rollTwo));
+    }
+    else {
+      statRolls.push(randRange(context.rng, stat["min"], stat["max"]));
+    }
   }
   return statRolls;
 }
@@ -547,11 +611,11 @@ function GetTierForMod(itemState, modId, context) {
   return [modTier, modCount, modCountAtItemLevel];
 }
 
-function CreateRolledMod(itemState, modId, context) {
+function CreateRolledMod(itemState, modId, rollsLucky, context) {
   const tierValues = GetTierForMod(itemState, modId, context);
   return {
     id : modId,
-    values : RollModValues(modId, context),
+    values : RollModValues(modId, rollsLucky, context),
     tier : tierValues[0],
     tierCount : tierValues[1],
     tierCountAtItemLevel : tierValues[2]
@@ -628,27 +692,27 @@ function CreateItem(baseItemId, level, context) {
   // Add and roll implicits
   const baseItem = base_items[baseItemId];
   for (const implicitId of baseItem["implicits"]) {
-    itemState.implicits.push(CreateRolledMod(itemState, implicitId, context));
+    itemState.implicits.push(CreateRolledMod(itemState, implicitId, false, context));
   }
 
   return itemState;
 }
 
-function AddRandomModFromListAndWeights(itemState, modsAndWeights, context) {
+function AddRandomModFromListAndWeights(itemState, modsAndWeights, rollsLucky, context) {
   let newItemState = cloneItemState(itemState);
   const weightedModPool = CreateWeightedModPool(modsAndWeights, context);
   const modId = PickModFromWeightedModPool(weightedModPool, context);
   if (!modId) {
     return [false, itemState];
   }
-  newItemState.affixes.push(CreateRolledMod(itemState, modId, context));
+  newItemState.affixes.push(CreateRolledMod(itemState, modId, rollsLucky, context));
   return [true, newItemState];  
 }
 
-function AddRandomMod(itemState, context, extendedParameters = {}) {
+function AddRandomMod(itemState, context, rollsLucky, extendedParameters = {}) {
   let newItemState = cloneItemState(itemState);
   const modsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, extendedParameters);
-  return AddRandomModFromListAndWeights(itemState, modsAndWeights, context);
+  return AddRandomModFromListAndWeights(itemState, modsAndWeights, rollsLucky, context);
 }
 
 const generationTypeOrder = {
@@ -763,7 +827,7 @@ function TransmutationItem(itemState, context) {
   let newItemState = { ...cloneItemState(itemState), rarity : "magic" };
   const numMods = randRange(context.rng, 1, 2);
   for (let i = 0; i < numMods; ++i) {
-    newItemState = AddRandomMod(newItemState, context)[1];
+    newItemState = AddRandomMod(newItemState, false, context)[1];
   }
 
   return [true, newItemState];
@@ -789,7 +853,7 @@ function AlterationItem(itemState, context) {
   let newItemState = { ...cloneItemState(itemState), affixes : [] };
   const numMods = randRange(context.rng, 1, 2);
   for (let i = 0; i < numMods; ++i) {
-    newItemState = AddRandomMod(newItemState, context)[1];
+    newItemState = AddRandomMod(newItemState, false, context)[1];
   }
 
   return [true, newItemState];
@@ -814,7 +878,7 @@ function AugmentationItem(itemState, context) {
     return [false, itemState];
   }
 
-  const [result, newItemState] = AddRandomMod(itemState, context);
+  const [result, newItemState] = AddRandomMod(itemState, false, context);
   if (!result) {
     return [false, itemState];
   }
@@ -842,7 +906,7 @@ function RegalItem(itemState, context) {
   }
 
   let rareItemState = { ...cloneItemState(itemState), rarity : "rare", generatedName : RollRareName(itemState, context.rng) };
-  const [result, newItemState] = AddRandomMod(rareItemState, context);
+  const [result, newItemState] = AddRandomMod(rareItemState, false, context);
   if (!result) {
     return [false, itemState];
   }
@@ -872,7 +936,7 @@ function AlchemyItem(itemState, context) {
   let newItemState = { ...cloneItemState(itemState), rarity : "rare", generatedName : RollRareName(itemState, context.rng) };
   const numMods = RollRareAffixCount(itemState.baseItemId, context.rng);
   for (let i = 0; i < numMods; ++i) {
-    newItemState = AddRandomMod(newItemState, context)[1];
+    newItemState = AddRandomMod(newItemState, false, context)[1];
   }
   newItemState.generatedName = RollRareName(itemState, context.rng);
 
@@ -899,7 +963,7 @@ function ChaosItem(itemState, context) {
   let newItemState = { ...cloneItemState(itemState), affixes : [], generatedName : RollRareName(itemState, context.rng)  };
   const numMods = RollRareAffixCount(itemState.baseItemId, context.rng);
   for (let i = 0; i < numMods; ++i) {
-    newItemState = AddRandomMod(newItemState, context)[1];
+    newItemState = AddRandomMod(newItemState, false, context)[1];
   }
 
   return [true, newItemState];
@@ -924,7 +988,7 @@ function ExaltedItem(itemState, context) {
     return [false, itemState];
   }
 
-  const [result, newItemState] = AddRandomMod(itemState, context);
+  const [result, newItemState] = AddRandomMod(itemState, false, context);
   if (!result) {
     return [false, itemState];
   }
@@ -960,7 +1024,7 @@ function ExaltedWithInfluenceItem(itemState, context, influence) {
   let [ , newItemState] = AddInfluenceToItem(itemState, influence);
   const influenceTag = GetInfluenceTag(newItemState.baseItemId, influence);
   const validMods = GetValidModsAndWeightsForItem(newItemState, context, { requiredPositiveWeightTag : influenceTag });
-  return AddRandomModFromListAndWeights(newItemState, validMods, context);
+  return AddRandomModFromListAndWeights(newItemState, validMods, false, context);
 }
 
 function CanAnnulmentItem(itemState, context) {
@@ -1008,7 +1072,7 @@ function BlessedItem(itemState, context) {
 
   let newItemState = cloneItemState(itemState);
   for (let implicit of newItemState.implicits) {
-    implicit.values = RollModValues(implicit.id, context);
+    implicit.values = RollModValues(implicit.id, false, context);
   }
   return [true, newItemState];
 }
@@ -1032,7 +1096,7 @@ function DivineItem(itemState, context) {
 
   let newItemState = cloneItemState(itemState);
   for (let affix of newItemState.affixes) {
-    affix.values = RollModValues(affix.id, context);
+    affix.values = RollModValues(affix.id, false, context);
   }
   return [true, newItemState];
 }
@@ -1080,7 +1144,7 @@ function CanFossilItem(itemState, context) {
 
 function GetWeightParametersForFossils(fossilTypes) {
   let addedMods = [];
-  let forcedMods = [];
+  let forcedModLists = [];
   let negativeTagMultipliers = {};
   let positiveTagMultipliers = {};
   let rollsLucky = false;
@@ -1107,7 +1171,9 @@ function GetWeightParametersForFossils(fossilTypes) {
         positiveTagMultipliers[tag] = weightMultiplier;
       }
     }
-    forcedMods = [ ...forcedMods, ...fossil["forced_mods"] ];
+    if (fossil["forced_mods"].length > 0) {
+      forcedModLists = [ ...forcedModLists, { modIds : [...fossil["forced_mods"]], fossilId: fossilId }];
+    }
     rollsLucky = rollsLucky || fossil["rolls_lucky"];
   }
 
@@ -1115,6 +1181,8 @@ function GetWeightParametersForFossils(fossilTypes) {
     negativeWeightMultipliers : negativeTagMultipliers,
     positiveWeightMultipliers : positiveTagMultipliers,
     addedMods : addedMods,
+    forcedModLists : forcedModLists,
+    rollsLucky : rollsLucky,
   }
 }
 
@@ -1133,14 +1201,27 @@ function FossilItem(itemState, context) {
   const fossilTypes = Array.prototype.slice.call(arguments, 2);
   const weightParameters = GetWeightParametersForFossils(fossilTypes);
 
-  const numMods = RollRareAffixCount(itemState.baseItemId, context.rng);
+  let numMods = RollRareAffixCount(itemState.baseItemId, context.rng);
   let newItemState = { ...cloneItemState(itemState), rarity : "rare", generatedName : RollRareName(itemState, context.rng), affixes : [] };  
+
+  for (const forcedModList of weightParameters.forcedModLists) {
+    const forcedModsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, { ...weightParameters, forcedModIds : forcedModList.modIds });
+    if (forcedModsAndWeights.length > 0) {
+      const result = AddRandomModFromListAndWeights(newItemState, forcedModsAndWeights, weightParameters.rollsLucky, context);
+      if (result[0] == false) {
+        continue;
+      }
+      newItemState = result[1];
+      numMods--;
+    }
+  }
+
   for (let i = 0; i < numMods; ++i) {
     const validMods = GetValidModsAndWeightsForItem(newItemState, context, weightParameters);
     if (validMods.length === 0) {
       break;
     }
-    const result = AddRandomModFromListAndWeights(newItemState, validMods, context);
+    const result = AddRandomModFromListAndWeights(newItemState, validMods, weightParameters.rollsLucky, context);
     if (result[0] == false) {
       break;
     }
@@ -1213,6 +1294,7 @@ class TheoryCrafter extends React.Component {
       selectedBaseLevel : initItemState.level,
       sortMods : false,
       selectedFossils : [],
+      collapsedGroups : new Set()
     };
   }
 
@@ -1392,6 +1474,18 @@ class TheoryCrafter extends React.Component {
     this.setState(this.insertAndCutState(itemState, "scour"));
   }
 
+  onGroupClicked(groupKey) {
+    const isCollapsed = this.state.collapsedGroups.has(groupKey);
+    let newSet = new Set(this.state.collapsedGroups);
+    if (isCollapsed) {
+      newSet.delete(groupKey);
+    }
+    else {
+      newSet.add(groupKey);
+    }
+    this.setState({ ...this.state, collapsedGroups : newSet });
+  }
+
   render() {
     return [
         <div key="baseSelection">
@@ -1467,7 +1561,7 @@ class TheoryCrafter extends React.Component {
               <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} sortMods={this.state.sortMods} key="craftedItem" />
             </div>,
             <div className="modListContainer" key="modListContainer">
-              <ModList fossilTypes={this.state.selectedFossils} itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} key="modList" />
+              <ModList collapsedGroups={this.state.collapsedGroups} onGroupClicked={(groupKey) => this.onGroupClicked(groupKey)} fossilTypes={this.state.selectedFossils} itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} key="modList" />
             </div>
           ]}
         </div>

@@ -220,9 +220,12 @@ body {
 }
 
 .modGroup .modGroupLine {
-/*  background-color: #444; */
+  border-top-color: #eee;
+  border-left-color: #ccc;
+  border-right-color: #999;
+  border-bottom-color: #777;
   border-width: 2px 2px 2px 2px;
-  margin-top: 8px;
+/*  margin-top: 8px; */
 }
 
 .modGroup .modGroupLine:hover {
@@ -234,7 +237,6 @@ body {
   grid-template-columns: 50px auto 80px 80px;
   grid-template-rows: auto;
   border-style: solid;
-  border-color: wheat;
   background-color: #222;  
 }
 
