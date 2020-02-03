@@ -709,7 +709,7 @@ function AddRandomModFromListAndWeights(itemState, modsAndWeights, rollsLucky, c
   return [true, newItemState];  
 }
 
-function AddRandomMod(itemState, context, rollsLucky, extendedParameters = {}) {
+function AddRandomMod(itemState, rollsLucky, context, extendedParameters = {}) {
   let newItemState = cloneItemState(itemState);
   const modsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, extendedParameters);
   return AddRandomModFromListAndWeights(itemState, modsAndWeights, rollsLucky, context);
