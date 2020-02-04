@@ -334,10 +334,12 @@ function GetAffixLimitForRarity(baseItemId, rarity) {
   return GetPrefixLimitForRarity(baseItemId, rarity) + GetSuffixLimitForRarity(baseItemId, rarity);
 }
 
+// eslint-disable-next-line no-unused-vars
 function GetPrefixLimit(itemState) {
   return GetPrefixLimitForRarity(itemState.baseItemId, itemState.rarity);
 }
 
+// eslint-disable-next-line no-unused-vars
 function GetSuffixLimit(itemState) {
   return GetSuffixLimitForRarity(itemState.baseItemId, itemState.rarity);
 }
@@ -643,28 +645,30 @@ function RollRareName(itemState, rng) {
 function RollRareAffixCount(baseItemId, rng) {
   const maxAffixCount = GetAffixLimitForRarity(baseItemId, "rare");
   if (maxAffixCount === 6) {
-    // Number of mods from data mined note (source: POE Discord, #3rd-party-tool-dev)
-    // "1/12 chance for 6 mods, 4/12 chance for 5 mods, and 7/12 chance for 6 mods"
-    const randInt = randRange(rng, 0, 11);
-    if (randInt < 7) {
-      return 4;
+    // Number of mods from data mined note (source: https://www.reddit.com/r/pathofexile/comments/amm2tg/tool_poecraftingshenanigans_a_crafting_simulator/)
+    let modCount = 4;
+    if (randRange(rng, 0, 2) === 0) {
+      // Roughly 33% chance to get 5 or 6
+      modCount++;
+      if (randRange(rng, 0, 2) === 0) {
+        // Roughly 33% * 33% chance to get 6
+        modCount++;
+      }
     }
-    if (randInt < 11) {
-      return 5;
-    }
-    return 6;
+    return modCount;
   }
   else if (maxAffixCount === 4) {
     // Number of mods from data mined note (source: reddit, https://www.reddit.com/r/pathofexile/comments/8fxnlu/chance_of_getting_specific_number_of_mods_via/)
     // "for jewels: 65/35"
-    const randInt = randRange(rng, 0, 99);
-    if (randInt < 65) {
-      return 3;
+    let modCount = 3;
+    if (randRange(rng, 0, 2) === 0) {
+      // Roughly 33% chance to get 4
+      modCount++;
     }
-    return 4;
+    return modCount;
   }
   else if (maxAffixCount > 0) {
-    // Unexpected situation, roll pure random
+    // Unexpected situation, roll pure random!
     return randRange(rng, 1, maxAffixCount);
   }
   return 0;
@@ -1221,7 +1225,7 @@ function FossilItem(itemState, context) {
     const forcedModsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, { ...weightParameters, forcedModIds : forcedModList.modIds });
     if (forcedModsAndWeights.length > 0) {
       const result = AddRandomModFromListAndWeights(newItemState, forcedModsAndWeights, weightParameters.rollsLucky, context);
-      if (result[0] == false) {
+      if (result[0] === false) {
         continue;
       }
       newItemState = result[1];
@@ -1235,7 +1239,7 @@ function FossilItem(itemState, context) {
       break;
     }
     const result = AddRandomModFromListAndWeights(newItemState, validMods, weightParameters.rollsLucky, context);
-    if (result[0] == false) {
+    if (result[0] === false) {
       break;
     }
     newItemState = result[1];
