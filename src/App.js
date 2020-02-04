@@ -459,12 +459,25 @@ function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
       // It's a little more conservative, but I'm going with the additive option here until proven otherwise.
 
       const modTags = context.modLookupTables.getTags(modId);
+
+      // Additive method
       let totalPositiveWeightMultiplier = 0;
       for (const modTag of modTags) {
         if (modTag in positiveWeightMultipliers) {
           totalPositiveWeightMultiplier = totalPositiveWeightMultiplier + positiveWeightMultipliers[modTag];
         }
       }
+
+      /*
+      // Multiplicative method
+      let totalPositiveWeightMultiplier = 1;
+      for (const modTag of modTags) {
+        if (modTag in positiveWeightMultipliers) {
+          totalPositiveWeightMultiplier = totalPositiveWeightMultiplier * positiveWeightMultipliers[modTag];
+        }
+      }
+      */
+
       if (totalPositiveWeightMultiplier > 0) {
         spawnWeight = spawnWeight * totalPositiveWeightMultiplier;
       }

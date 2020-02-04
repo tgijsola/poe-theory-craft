@@ -117,7 +117,9 @@ export default class TranslationHelper {
 
     static ApplyIndexHandlers = function(indexHandlers, value) {
         for (const handler of indexHandlers) {
-            value = this.IndexHandlers[handler](value)
+            if (handler in this.IndexHandlers) {
+                value = this.IndexHandlers[handler](value)
+            }
         }
         return value;
     }
