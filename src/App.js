@@ -12,6 +12,7 @@ import _mods from './data/mods.json';
 import mod_types from './data/mod_types.json';
 import stat_translations from './data/stat_translations.json';
 import stats from './data/stats.json'
+import essences from './data/essences.json'
 
 function randRange(rng, minInclusive, maxInclusive) {
   return Math.floor(rng.quick() * (maxInclusive - minInclusive + 1)) + minInclusive;
@@ -86,7 +87,7 @@ class CraftedItem extends React.Component {
   }
 
   getImplicitBoxes() {
-    let showMods = this.props.itemState.implicits;
+    let showMods = [...this.props.itemState.baseImplicits, ...this.props.itemState.gildedImplicits];
     if (this.props.sortMods) {
       showMods = SortMods(showMods, this.props.context);
     }
@@ -348,44 +349,6 @@ function GetAffixLimit(itemState) {
   return GetAffixLimitForRarity(itemState.baseItemId, itemState.rarity); 
 }
 
-function CanModBeAddedToItem(modId, itemState, context, hasPrefixSlots, hasSuffixSlots, existingModGroups) {
-  const mod = context.mods[modId];
-
-  // TODO: Investigate this! It's valid in some cases and not valid in others (added mods from delve fossils)
-  /*
-  const baseItem = base_items[itemState.baseItemId];
-  if (mod["domain"] !== baseItem["domain"]) {
-    return false;
-  }
-  */
-
-  if (mod["required_level"] > itemState.level) {
-    return false;
-  }
-
-  if ((mod["generation_type"] === "prefix")) {
-    if(!hasPrefixSlots) {
-      return false;
-    }
-  }
-  else if (mod["generation_type"] === "suffix") {
-    if (!hasSuffixSlots) {
-      return false;
-    }
-  }
-  else {
-    return false;
-  }
-
-  const modGroup = mod["group"];
-  if (modGroup && modGroup !== "") {
-    if (existingModGroups.has(modGroup)) {
-      return false;
-    }
-  }
-  return true;
-}
-
 function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
   let validMods = [];
 
@@ -393,23 +356,18 @@ function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
 
   const rarity = ("rarityOverride" in extendedParameters) ? extendedParameters.rarityOverride : itemState.rarity;
   const ignoreAffixLimits = ("ignoreAffixLimits" in extendedParameters) ? extendedParameters.ignoreAffixLimits : false;
+  const ignoreAffixTypes = ("ignoreAffixTypes" in extendedParameters) ? extendedParameters.ignoreAffixTypes : false;
   const requiredPositiveWeightTag = ("requiredPositiveWeightTag" in extendedParameters) ? extendedParameters.requiredPositiveWeightTag : null;
   const negativeWeightMultipliers = ("negativeWeightMultipliers" in extendedParameters) ? extendedParameters.negativeWeightMultipliers : null;
   const positiveWeightMultipliers = ("positiveWeightMultipliers" in extendedParameters) ? extendedParameters.positiveWeightMultipliers : null;
   const ignoreExistingGroups = ("ignoreExistingGroups" in extendedParameters) ? extendedParameters.ignoreExistingGroups : false;
+  const ignoreSpawnWeight = ("ignoreSpawnWeight" in extendedParameters) ? extendedParameters.ignoreSpawnWeight : false;
+  const ignoreRequiredLevel = ("ignoreRequiredLevel" in extendedParameters) ? extendedParameters.ignoreRequiredLevel : false;
   const addedMods = ("addedMods" in extendedParameters) ? extendedParameters.addedMods : null;
   const forcedModIds = ("forcedModIds" in extendedParameters) ? extendedParameters.forcedModIds : null;
 
   const hasPrefixSlots = ignoreAffixLimits || (GetPrefixLimitForRarity(itemState.baseItemId, rarity) > GetPrefixCount(itemState, context));
   const hasSuffixSlots = ignoreAffixLimits || (GetSuffixLimitForRarity(itemState.baseItemId, rarity) > GetSuffixCount(itemState, context));
-  let existingModGroups = new Set();
-  if (!ignoreExistingGroups)
-  {
-    for (const affix of itemState.affixes) {
-      const existingMod = context.mods[affix.id];
-      existingModGroups.add(existingMod["group"]);
-    }
-  }
 
   let modIds = [];
   if (forcedModIds) {
@@ -422,20 +380,57 @@ function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
     }
   }
 
+  let existingModGroups = new Set();
+  if (!ignoreExistingGroups)
+  {
+    for (const affix of itemState.affixes) {
+      const existingMod = context.mods[affix.id];
+      existingModGroups.add(existingMod["group"]);
+    }
+  }
+
   for (const modId of modIds) {
+    const mod = context.mods[modId];
+
     if (requiredPositiveWeightTag) {
-      const mod = context.mods[modId];
       if (!(mod["spawn_weights"].find(x => x["tag"] === requiredPositiveWeightTag && x["weight"] > 0))) {
         continue;
       }
     }
 
-    if (!CanModBeAddedToItem(modId, itemState, context, hasPrefixSlots, hasSuffixSlots, existingModGroups)) {
-      continue;
+    if (!ignoreRequiredLevel) {
+      if (mod["required_level"] > itemState.level) {
+        continue;
+      }
+    }
+
+    if (!ignoreAffixTypes) {
+      if ((mod["generation_type"] === "prefix")) {
+        if(!hasPrefixSlots) {
+          continue;
+        }
+      }
+      else if (mod["generation_type"] === "suffix") {
+        if (!hasSuffixSlots) {
+          continue;
+        }
+      }
+      else {
+        continue;
+      }
+    }
+ 
+    if (!ignoreExistingGroups) {
+      const modGroup = mod["group"];
+      if (modGroup && modGroup !== "") {
+        if (existingModGroups.has(modGroup)) {
+          continue;
+        }
+      }
     }
 
     let spawnWeight = GetSpawnWeightForMod(modId, tags, context);
-    if (spawnWeight <= 0) {
+    if (!ignoreSpawnWeight && spawnWeight <= 0) {
       continue;
     }
 
@@ -447,7 +442,7 @@ function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
         }
       }
 
-      if (spawnWeight <= 0) {
+      if (!ignoreSpawnWeight && spawnWeight <= 0) {
         continue;
       }
     }
@@ -552,7 +547,10 @@ function GetBaseItemTags (itemState, context) {
       tags.push(influenceTag);
     }
   }
-  for (const implicit of itemState.implicits) {
+  for (const implicit of itemState.baseImplicits) {
+    tags = tags.concat(GetAddedTags(implicit.id, context));
+  }
+  for (const implicit of itemState.gildedImplicits) {
     tags = tags.concat(GetAddedTags(implicit.id, context));
   }
   return tags;
@@ -686,7 +684,8 @@ function cloneItemState(itemState) {
   return { 
     ...itemState, 
     influences : itemState.influences.slice(),
-    implicits : cloneMods(itemState.implicits), 
+    baseImplicits : cloneMods(itemState.baseImplicits), 
+    gildedImplicits : cloneMods(itemState.gildedImplicits),
     corruptions : cloneMods(itemState.corruptions), 
     affixes : cloneMods(itemState.affixes) 
   };
@@ -701,7 +700,8 @@ function CreateItem(baseItemId, level, context) {
     corrupted : false,
     quality : 0,
     influences : [],
-    implicits : [],
+    baseImplicits : [],
+    gildedImplicits : [],
     corruptions : [],
     affixes : []
   }  
@@ -709,19 +709,23 @@ function CreateItem(baseItemId, level, context) {
   // Add and roll implicits
   const baseItem = base_items[baseItemId];
   for (const implicitId of baseItem["implicits"]) {
-    itemState.implicits.push(CreateRolledMod(itemState, implicitId, false, context));
+    itemState.baseImplicits.push(CreateRolledMod(itemState, implicitId, false, context));
   }
 
   return itemState;
 }
 
-function AddRandomModFromListAndWeights(itemState, modsAndWeights, rollsLucky, context) {
-  let newItemState = cloneItemState(itemState);
+function PickRandomModFromListAndWeights(modsAndWeights, context) {
   const weightedModPool = CreateWeightedModPool(modsAndWeights, context);
-  const modId = PickModFromWeightedModPool(weightedModPool, context);
+  return PickModFromWeightedModPool(weightedModPool, context);
+}
+
+function AddRandomModFromListAndWeights(itemState, modsAndWeights, rollsLucky, context) {
+  const modId = PickRandomModFromListAndWeights(modsAndWeights, context);
   if (!modId) {
     return [false, itemState];
   }
+  let newItemState = cloneItemState(itemState);
   newItemState.affixes.push(CreateRolledMod(itemState, modId, rollsLucky, context));
   return [true, newItemState];  
 }
@@ -1075,7 +1079,7 @@ function CanBlessedItem(itemState, context) {
   if (itemState.corrupted) {
     return false;
   }
-  if (itemState.implicits.length === 0) {
+  if (itemState.baseImplicits.length === 0) {
     return false;
   }
 
@@ -1088,7 +1092,7 @@ function BlessedItem(itemState, context) {
   }
 
   let newItemState = cloneItemState(itemState);
-  for (let implicit of newItemState.implicits) {
+  for (let implicit of newItemState.baseImplicits) {
     implicit.values = RollModValues(implicit.id, false, context);
   }
   return [true, newItemState];
@@ -1121,6 +1125,10 @@ function DivineItem(itemState, context) {
 // eslint-disable-next-line no-unused-vars
 function CanFossilItem(itemState, context) {
   if (itemState.corrupted) {
+    return false;
+  }
+
+  if (base_items[itemState.baseItemId]["domain"] === "flask") {
     return false;
   }
 
@@ -1162,8 +1170,10 @@ function CanFossilItem(itemState, context) {
 function GetWeightParametersForFossils(fossilTypes) {
   let addedMods = [];
   let forcedModLists = [];
+  let gildedFossilMods = [];
   let negativeTagMultipliers = {};
   let positiveTagMultipliers = {};
+  let corruptedEssenceChances = [];
   let rollsLucky = false;
   for (const fossilId of fossilTypes) {
     const fossil = fossils[fossilId];
@@ -1191,6 +1201,12 @@ function GetWeightParametersForFossils(fossilTypes) {
     if (fossil["forced_mods"].length > 0) {
       forcedModLists = [ ...forcedModLists, { modIds : [...fossil["forced_mods"]], fossilId: fossilId }];
     }
+    if (fossil["sell_price_mods"].length > 0) {
+      gildedFossilMods = [ ...gildedFossilMods, ...fossil["sell_price_mods"]];
+    }
+    if (fossil["corrupted_essence_chance"] > 0) {
+      corruptedEssenceChances.push(fossil["corrupted_essence_chance"]);
+    }
     rollsLucky = rollsLucky || fossil["rolls_lucky"];
   }
 
@@ -1199,7 +1215,9 @@ function GetWeightParametersForFossils(fossilTypes) {
     positiveWeightMultipliers : positiveTagMultipliers,
     addedMods : addedMods,
     forcedModLists : forcedModLists,
+    gildedFossilMods : gildedFossilMods,
     rollsLucky : rollsLucky,
+    corruptedEssenceChances : corruptedEssenceChances,
   }
 }
 
@@ -1208,18 +1226,46 @@ function FossilItem(itemState, context) {
     return [false, itemState];
   }
 
-  // NOTE - It's not immediately clear to me what the effect of combining
-  // two fossils that have conflicting negative and positive mod weights,
-  // so for now I'm multiplying them together.
-  //
-  // For the case of aetheric / serrated, this results in both having a 
-  // weight multiplier of 1.5, which feels about right. 
-
   const fossilTypes = Array.prototype.slice.call(arguments, 2);
   const weightParameters = GetWeightParametersForFossils(fossilTypes);
 
   let numMods = RollRareAffixCount(itemState.baseItemId, context.rng);
   let newItemState = { ...cloneItemState(itemState), rarity : "rare", generatedName : RollRareName(itemState, context.rng), affixes : [] };  
+
+  if (weightParameters.gildedFossilMods.length > 0)
+  {
+    const gildedImplicitModsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, { forcedModIds : weightParameters.gildedFossilMods, ignoreAffixTypes : true });
+    const gildedModId = PickRandomModFromListAndWeights(gildedImplicitModsAndWeights, context);
+    if (gildedModId) {
+      const gildedMod = CreateRolledMod(newItemState, gildedModId, false, context);
+      newItemState.gildedImplicits = [gildedMod];
+    }
+  }
+
+  for (const corruptedEssenceChance of weightParameters.corruptedEssenceChances) {
+    const randRoll = randRange(context.rng, 0, 99);
+    if (randRoll < corruptedEssenceChance) {
+      let essenceModIds = [];
+      const itemClass = base_items[itemState.baseItemId]["item_class"];
+      for (const essenceId in essences) {
+        const essence = essences[essenceId];
+        if (essence["type"]["is_corruption_only"]) {
+          if (itemClass in essence["mods"]) {
+            essenceModIds.push(essence["mods"][itemClass]);
+          }
+        }
+      }
+      // NOTE: Many of the mods applied by corrupted essences don't have weights
+      // Therefore I'm assuming it just picks randomly from the available ones
+      const essenceModsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, { ignoreAffixLimits : true, ignoreSpawnWeight : true, forcedModIds : essenceModIds });
+      if (essenceModsAndWeights.length > 0) {
+        const essenceModIdx = randRange(context.rng, 0, essenceModsAndWeights.length - 1);
+        const essenceModId = essenceModsAndWeights[essenceModIdx].modId;
+        newItemState.affixes.push(CreateRolledMod(itemState, essenceModId, false, context));
+        numMods--;
+      }
+    }
+  }
 
   for (const forcedModList of weightParameters.forcedModLists) {
     const forcedModsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, { ...weightParameters, forcedModIds : forcedModList.modIds });
