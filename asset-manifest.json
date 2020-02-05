@@ -1,22 +1,22 @@
 {
   "files": {
-    "main.css": "/poe-theory-craft/static/css/main.4f4df61e.chunk.css",
-    "main.js": "/poe-theory-craft/static/js/main.42f26458.chunk.js",
-    "main.js.map": "/poe-theory-craft/static/js/main.42f26458.chunk.js.map",
+    "main.css": "/poe-theory-craft/static/css/main.9877583c.chunk.css",
+    "main.js": "/poe-theory-craft/static/js/main.357c5127.chunk.js",
+    "main.js.map": "/poe-theory-craft/static/js/main.357c5127.chunk.js.map",
     "runtime-main.js": "/poe-theory-craft/static/js/runtime-main.49a4fc52.js",
     "runtime-main.js.map": "/poe-theory-craft/static/js/runtime-main.49a4fc52.js.map",
     "static/js/2.8f54da1a.chunk.js": "/poe-theory-craft/static/js/2.8f54da1a.chunk.js",
     "static/js/2.8f54da1a.chunk.js.map": "/poe-theory-craft/static/js/2.8f54da1a.chunk.js.map",
     "index.html": "/poe-theory-craft/index.html",
-    "precache-manifest.e8d3ce5f8de2ad24c1cbe575454cc6fa.js": "/poe-theory-craft/precache-manifest.e8d3ce5f8de2ad24c1cbe575454cc6fa.js",
+    "precache-manifest.d883b81a9bde8e173a930ffe9add4ffe.js": "/poe-theory-craft/precache-manifest.d883b81a9bde8e173a930ffe9add4ffe.js",
     "service-worker.js": "/poe-theory-craft/service-worker.js",
-    "static/css/main.4f4df61e.chunk.css.map": "/poe-theory-craft/static/css/main.4f4df61e.chunk.css.map",
+    "static/css/main.9877583c.chunk.css.map": "/poe-theory-craft/static/css/main.9877583c.chunk.css.map",
     "static/js/2.8f54da1a.chunk.js.LICENSE": "/poe-theory-craft/static/js/2.8f54da1a.chunk.js.LICENSE"
   },
   "entrypoints": [
     "static/js/runtime-main.49a4fc52.js",
     "static/js/2.8f54da1a.chunk.js",
-    "static/css/main.4f4df61e.chunk.css",
-    "static/js/main.42f26458.chunk.js"
+    "static/css/main.9877583c.chunk.css",
+    "static/js/main.357c5127.chunk.js"
   ]
 }
