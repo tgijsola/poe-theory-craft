@@ -172,9 +172,26 @@ class ModListGroupLine extends React.Component {
     for (let i = 1; i < nameLineElements.length; i += 2) {
       nameLineElements.splice(i, 0, <br key={"br_" + i}/>);
     }
+
+    let tierClass = "modTierContents";
+    if (this.props.tierContents.length > 0) {
+      const affixLetter = this.props.tierContents[0];
+      if (affixLetter === "p") {
+        tierClass = tierClass + " prefix";
+      }
+      else if (affixLetter === "s") {
+        tierClass = tierClass + " suffix";
+      }
+    }
+
+    const probClass = "modProb " + this.props.probabilityClass;
+
     return <div className="modGroupLine" onClick={this.props.onGroupClicked}>
       <div className="modTier" key="modTier">
         { this.props.collapsed ? "▶" : "▼" }
+      </div>
+      <div className={tierClass} key="modTierContents">
+        { this.props.tierContents }
       </div>
       <div className="modName" key="modName">
         { nameLineElements }
@@ -182,7 +199,7 @@ class ModListGroupLine extends React.Component {
       <div className="modWeight" key="modWeight">
         { this.props.weight }
       </div>
-      <div className="modProb" key="modProb">
+      <div className={probClass} key="modProb">
         { this.props.prob }
       </div>
     </div>;
@@ -202,8 +219,23 @@ class ModListModLine extends React.Component {
     for (let i = 1; i < nameLineElements.length; i += 2) {
       nameLineElements.splice(i, 0, <br key={"br_" + i}/>);
     }
+
+    let tierClass = "modTier";
+    if (this.props.tierString.length > 0) {
+      const affixLetter = this.props.tierString[0];
+      if (affixLetter === "p") {
+        tierClass = tierClass + " prefix";
+      }
+      else if (affixLetter === "s") {
+        tierClass = tierClass + " suffix";
+      }
+    }
+
     return <div className="modLine">
-      <div className="modTier" key="modTier">
+      <div className="requiredLevel" key="modLevel">
+        { this.props.requiredLevel }
+      </div>
+      <div className={tierClass} key="modTier">
         { this.props.tierString }
       </div>
       <div className="modName" key="modName">
@@ -226,15 +258,47 @@ class ModGroup extends React.Component {
       const modWeight = x.weight;
       const modName = TranslationHelper.TranslateMod(stat_translations, modData);
       const modTierInfo = GetTierForMod(this.props.itemState, x.modId, this.props.context);
-      return <ModListModLine lineClass="modLine" context={this.props.context} tierString={modData["generation_type"].slice(0, 1) + (modTierInfo[0] + 1)} nameLines={modName} weight={modWeight} prob={(modWeight / this.props.totalWeight).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={x.modId} />
+      return <ModListModLine lineClass="modLine" context={this.props.context} requiredLevel={modData["required_level"]} tierString={modData["generation_type"].slice(0, 1) + (modTierInfo[0] + 1)} nameLines={modName} weight={modWeight} prob={(modWeight / this.props.totalWeight).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={x.modId} />
     });
   }
 
   render() {
     const groupWeight = this.props.modAndWeightGroup.reduce((total, value) => { return total + value.weight }, 0);
     const groupName = this.props.groupName;
-//    const groupName = TranslationHelper.TranslateModForGroup(stat_translations, this.props.context.mods[this.props.modAndWeightGroup[0].modId]);
-    const elementList = [<ModListGroupLine collapsed={this.props.collapsed} onGroupClicked={() => this.props.onGroupClicked(this.props.groupKey)} lineClass="modGroupLine" context={this.props.context} nameLines={groupName} weight={groupWeight} prob={(groupWeight / this.props.totalWeight).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={groupName} />];
+    let minTier = 1000;
+    let maxTier = 0;
+    for (const modAndWeight of this.props.modAndWeightGroup) {
+      const modId = modAndWeight.modId;
+      const tierInfoForMod = GetTierForMod(this.props.itemState, modId, this.props.context);
+      const tierForMod = tierInfoForMod[0];
+      minTier = Math.min(minTier, tierForMod + 1);
+      maxTier = Math.max(maxTier, tierForMod + 1);
+    }
+    const modData = this.props.context.mods[this.props.modAndWeightGroup[0].modId];
+    const tierContentsString = (minTier === maxTier) ?
+      TranslationHelper.stringformat("{0}{1}", [modData["generation_type"].slice(0, 1), minTier])
+    : TranslationHelper.stringformat("{0}{1}-{0}{2}", [modData["generation_type"].slice(0, 1), minTier, maxTier]);
+    const probability = groupWeight / this.props.totalWeight;
+    let probabilityClass = "mid";
+    if (probability < 0.02) {
+      probabilityClass = "veryLow";
+    }
+    else if (probability < 0.05) {
+      probabilityClass = "low";
+    }
+    else if (probability < 0.10) {
+      probabilityClass = "mid";
+    }
+    else if (probability < 0.25) {
+      probabilityClass = "midHigh";
+    }
+    else if (probability < 1.0) {
+      probabilityClass = "high";
+    }
+    else {
+      probabilityClass = "guaranteed";
+    }
+    const elementList = [<ModListGroupLine tierContents={tierContentsString} collapsed={this.props.collapsed} onGroupClicked={() => this.props.onGroupClicked(this.props.groupKey)} lineClass="modGroupLine" context={this.props.context} nameLines={groupName} weight={groupWeight} probabilityClass={probabilityClass} prob={(probability).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={groupName} />];
     if (!this.props.collapsed) {
       elementList.push(...this.renderModsInModGroup(this.props.modAndWeightGroup, this.props.totalWeight));
     }
@@ -283,7 +347,7 @@ class ModList extends React.Component {
 
     return <div className="modList">
       {
-        modGroups.map((modAndWeightGroup) => <ModGroup groupName={modAndWeightGroup.groupName} onGroupClicked={this.props.onGroupClicked} modAndWeightGroup={modAndWeightGroup.modsAndWeights} groupKey={modAndWeightGroup.groupKey} totalWeight={modAndWeightGroup.totalWeight} itemState={this.props.itemState} context={this.props.context} collapsed={this.props.collapsedGroups.has(modAndWeightGroup.groupKey)} key={modAndWeightGroup.groupKey}/>)
+        modGroups.map((modAndWeightGroup) => <ModGroup groupName={modAndWeightGroup.groupName} onGroupClicked={this.props.onGroupClicked} modAndWeightGroup={modAndWeightGroup.modsAndWeights} groupKey={modAndWeightGroup.groupKey} totalWeight={modAndWeightGroup.totalWeight} itemState={this.props.itemState} context={this.props.context} collapsed={!this.props.expandedGroups.has(modAndWeightGroup.groupKey)} key={modAndWeightGroup.groupKey}/>)
       }
     </div>
   }
@@ -1406,7 +1470,7 @@ class TheoryCrafter extends React.Component {
       selectedBaseLevel : initItemState.level,
       sortMods : false,
       selectedFossils : [],
-      collapsedGroups : new Set()
+      expandedGroups : new Set(),
     };
   }
 
@@ -1587,15 +1651,15 @@ class TheoryCrafter extends React.Component {
   }
 
   onGroupClicked(groupKey) {
-    const isCollapsed = this.state.collapsedGroups.has(groupKey);
-    let newSet = new Set(this.state.collapsedGroups);
-    if (isCollapsed) {
+    const isExpanded = this.state.expandedGroups.has(groupKey);
+    let newSet = new Set(this.state.expandedGroups);
+    if (isExpanded) {
       newSet.delete(groupKey);
     }
     else {
       newSet.add(groupKey);
     }
-    this.setState({ ...this.state, collapsedGroups : newSet });
+    this.setState({ ...this.state, expandedGroups : newSet });
   }
 
   render() {
@@ -1673,7 +1737,7 @@ class TheoryCrafter extends React.Component {
               <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} sortMods={this.state.sortMods} key="craftedItem" />
             </div>,
             <div className="modListContainer" key="modListContainer">
-              <ModList collapsedGroups={this.state.collapsedGroups} onGroupClicked={(groupKey) => this.onGroupClicked(groupKey)} fossilTypes={this.state.selectedFossils} itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} key="modList" />
+              <ModList expandedGroups={this.state.expandedGroups} onGroupClicked={(groupKey) => this.onGroupClicked(groupKey)} fossilTypes={this.state.selectedFossils} itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} key="modList" />
             </div>
           ]}
         </div>

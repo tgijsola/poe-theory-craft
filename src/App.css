@@ -27,7 +27,7 @@
 }
 
 body {
-  background-color: #302F2F;
+  background-color: #222;
 }
 
 .button {
@@ -135,7 +135,7 @@ body {
 }
 
 .craftedItem .enchantment {
-  color: #b4b4ff
+  color: #b4b4ff;
 }
 
 .craftedItem .propertyLine {
@@ -147,12 +147,41 @@ body {
 }
 
 .craftedItem .crafted {
-  color: #b4b4ff
+  color: #b4b4ff;
 }
 
 .craftedItem .improved {
-  color: #88f
+  color: #88f;
 }
+
+*.prefix {
+  color: #ec7676;
+}
+
+*.suffix {
+  color: #7aaff1;
+}
+
+.modProb.veryLow {
+  color:#bbb;
+}
+.modProb.low {
+  color:#ddd;
+}
+.modProb.mid {
+  color:#fff;
+}
+.modProb.midHigh {
+  color:rgb(253, 253, 125);
+}
+.modProb.high {
+  color:#ff9800;
+}
+.modProb.guaranteed {
+  color:#d500d6;
+}
+
+.craftedItem
 
 .craftedItem .symbol {
   margin: 0;
@@ -210,7 +239,7 @@ body {
 
 .modList {
   width: 800px;
-  color: white;
+  color: #eee;
   text-align: center;
   margin: 5px;
   font-size: 16px;
@@ -224,12 +253,11 @@ body {
 }
 
 .modGroup .modGroupLine {
-  border-top-color: #eee;
-  border-left-color: #ccc;
-  border-right-color: #999;
-  border-bottom-color: #777;
-  border-width: 2px 2px 2px 2px;
-/*  margin-top: 8px; */
+  border-top-color: #666;
+  border-left-color: #666;
+  border-right-color: #555;
+  border-bottom-color: #111;
+  border-width: 1px 0px 1px 0px;
 }
 
 .modGroup .modGroupLine:hover {
@@ -238,44 +266,44 @@ body {
 
 .modList .modLine, .modList .modGroupLine {
   display: grid;
-  grid-template-columns: 50px auto 80px 80px;
   grid-template-rows: auto;
   border-style: solid;
-  background-color: #222;  
 }
 
 .modList .modGroupLine {
-  grid-template-columns: 48px auto 80px 78px;  
+  /* Purply shaper color
+  background: rgb(68,68,68);
+  background: linear-gradient(180deg, rgba(68,68,68,1) 0%, rgba(24,0,69,1) 100%); 
+  */
+  background: rgb(68,68,68);
+  background: linear-gradient(180deg, rgba(68,68,68,1) 0%, rgba(54,54,54,1) 100%);
+
+  grid-template-columns: 48px 48px auto 80px 78px;  
+  grid-auto-flow: column;
 }
 
 .modList .modLine {
   border-width: 0px;
+  grid-template-columns: 48px 48px auto 80px 78px;  
+  grid-auto-flow: column;
 }
 
 .modLine .tierString, .modGroupLine .tierString {
-  grid-column-start: 1;
-  grid-row: initial;
   padding: 2px;
   margin: auto;
 }
 
 .modLine .modName, .modGroupLine .modName {
-  grid-column-start: 2;
-  grid-row: initial;
   padding: 2px;
   margin: auto;  
 }
 
 .modLine .modWeight, .modGroupLine .modWeight {
-  grid-column-start: 3;
-  grid-row: initial;
   padding: 2px;
   margin: auto;  
 }
 
 .modLine .modProb, .modGroupLine .modProb {
-  grid-column-start: 4;
-  grid-row: initial;
   padding: 2px;
   margin: auto;  
 }
@@ -284,8 +312,11 @@ body {
   color: #ccc;
 }
 
+.modList .modLine:nth-child(odd) {
+  background-color: #111;  
+}
 .modList .modLine:nth-child(even) {
-  background-color:#302F2F;
+  background-color:#222;
 }
 
 .itemAndModListContainer {
