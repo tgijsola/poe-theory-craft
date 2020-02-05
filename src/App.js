@@ -36,7 +36,11 @@ function TipLine (props) {
 }
 
 function ModLine (props) {
-  return <div className="modLine">{props.line}</div>
+  let className = "modLine";
+  if (props.additionalClassName) {
+    className = className + " " + props.additionalClassName;
+  }
+  return <div className={className}>{props.line}</div>
 }
 
 function ItemNameLine (props) {
@@ -69,14 +73,34 @@ class CraftedItem extends React.Component {
     else if (generationType === "unique" || generationType === "implicit") {
       line = generationType[0].toUpperCase() + generationType.slice(1) + " Modifier";
     }
+    else if (generationType === "enchantment") {
+      line = "Labyrinth Enchantment";
+    }
     return <TipLine line={line} key={modInstance.id + "_tip"}/>;
   }
 
-  getStatLines(modInstance) {
+  getStatLines(modInstance, additionalClassName) {
     const mod = this.props.context.mods[modInstance.id];
     const values = modInstance.values;
     const translationStrings = TranslationHelper.TranslateMod(stat_translations, mod, values);    
-    return translationStrings.map((x, i) => <ModLine line={x} key={modInstance.id + "_mod_" + i}/>);
+    return translationStrings.map((x, i) => <ModLine additionalClassName={additionalClassName} line={x} key={modInstance.id + "_mod_" + i}/>);
+  }
+
+  getEnchantmentLine(modInstance) {
+    const statLines = this.getStatLines(modInstance);
+    if (statLines.length > 0) {
+      return [this.getTipLine(modInstance, "enchantment"), this.getStatLines(modInstance, "enchantment")];
+    }    
+  }
+
+  getEnchantmentBoxes() {
+    let showMods = this.props.itemState.enchantments;
+    if (this.props.sortMods) {
+      showMods = SortMods(showMods, this.props.context);
+    }
+    return showMods.map(
+      x => <div className="modBox enchantment" key={x.id}>{this.getEnchantmentLine(x)}</div>
+    );
   }
 
   getImplicitLine(modInstance) {
@@ -129,7 +153,7 @@ class CraftedItem extends React.Component {
       <div className="content-box">
         <ItemHeader itemTypeName={this.getItemTypeName()} generatedName={this.props.itemState.generatedName} influences={this.props.itemState.influences} />
         <PropertyLine line="Item Level: {}" values={[this.props.itemState.level]} />
-        { this.getGroupsWithSeparators([this.getImplicitBoxes(), this.getAffixBoxes()]) }
+        { this.getGroupsWithSeparators([this.getEnchantmentBoxes(), this.getImplicitBoxes(), this.getAffixBoxes()]) }
       </div>
     </div>
   }
@@ -357,6 +381,7 @@ function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
   const rarity = ("rarityOverride" in extendedParameters) ? extendedParameters.rarityOverride : itemState.rarity;
   const ignoreAffixLimits = ("ignoreAffixLimits" in extendedParameters) ? extendedParameters.ignoreAffixLimits : false;
   const ignoreAffixTypes = ("ignoreAffixTypes" in extendedParameters) ? extendedParameters.ignoreAffixTypes : false;
+  const forceAffixTypes = ("forceAffixTypes" in extendedParameters) ? extendedParameters.forceAffixTypes : null;
   const requiredPositiveWeightTag = ("requiredPositiveWeightTag" in extendedParameters) ? extendedParameters.requiredPositiveWeightTag : null;
   const negativeWeightMultipliers = ("negativeWeightMultipliers" in extendedParameters) ? extendedParameters.negativeWeightMultipliers : null;
   const positiveWeightMultipliers = ("positiveWeightMultipliers" in extendedParameters) ? extendedParameters.positiveWeightMultipliers : null;
@@ -405,18 +430,26 @@ function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
     }
 
     if (!ignoreAffixTypes) {
-      if ((mod["generation_type"] === "prefix")) {
-        if(!hasPrefixSlots) {
+      if (forceAffixTypes) {
+        if (!forceAffixTypes.includes(mod["generation_type"])) {
           continue;
         }
       }
-      else if (mod["generation_type"] === "suffix") {
-        if (!hasSuffixSlots) {
+      else 
+      {
+        if ((mod["generation_type"] === "prefix")) {
+          if(!hasPrefixSlots) {
+            continue;
+          }
+        }
+        else if (mod["generation_type"] === "suffix") {
+          if (!hasSuffixSlots) {
+            continue;
+          }
+        }
+        else {
           continue;
         }
-      }
-      else {
-        continue;
       }
     }
  
@@ -684,6 +717,7 @@ function cloneItemState(itemState) {
   return { 
     ...itemState, 
     influences : itemState.influences.slice(),
+    enchantments : cloneMods(itemState.enchantments),
     baseImplicits : cloneMods(itemState.baseImplicits), 
     gildedImplicits : cloneMods(itemState.gildedImplicits),
     corruptions : cloneMods(itemState.corruptions), 
@@ -700,6 +734,7 @@ function CreateItem(baseItemId, level, context) {
     corrupted : false,
     quality : 0,
     influences : [],
+    enchantments : [],
     baseImplicits : [],
     gildedImplicits : [],
     corruptions : [],
@@ -1175,6 +1210,8 @@ function GetWeightParametersForFossils(fossilTypes) {
   let positiveTagMultipliers = {};
   let corruptedEssenceChances = [];
   let rollsLucky = false;
+  let addsEnchant = false;
+
   for (const fossilId of fossilTypes) {
     const fossil = fossils[fossilId];
     addedMods = [ ...addedMods, ...fossil["added_mods"] ];
@@ -1207,6 +1244,9 @@ function GetWeightParametersForFossils(fossilTypes) {
     if (fossil["corrupted_essence_chance"] > 0) {
       corruptedEssenceChances.push(fossil["corrupted_essence_chance"]);
     }
+    if (fossil["enchants"]) {
+      addsEnchant = true;
+    }
     rollsLucky = rollsLucky || fossil["rolls_lucky"];
   }
 
@@ -1218,6 +1258,7 @@ function GetWeightParametersForFossils(fossilTypes) {
     gildedFossilMods : gildedFossilMods,
     rollsLucky : rollsLucky,
     corruptedEssenceChances : corruptedEssenceChances,
+    addsEnchant : addsEnchant,
   }
 }
 
@@ -1232,13 +1273,21 @@ function FossilItem(itemState, context) {
   let numMods = RollRareAffixCount(itemState.baseItemId, context.rng);
   let newItemState = { ...cloneItemState(itemState), rarity : "rare", generatedName : RollRareName(itemState, context.rng), affixes : [] };  
 
-  if (weightParameters.gildedFossilMods.length > 0)
-  {
+  if (weightParameters.gildedFossilMods.length > 0) {
     const gildedImplicitModsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, { forcedModIds : weightParameters.gildedFossilMods, ignoreAffixTypes : true });
     const gildedModId = PickRandomModFromListAndWeights(gildedImplicitModsAndWeights, context);
     if (gildedModId) {
       const gildedMod = CreateRolledMod(newItemState, gildedModId, false, context);
       newItemState.gildedImplicits = [gildedMod];
+    }
+  }
+
+  if (weightParameters.addsEnchant) {
+    const enchantmentModsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, { forceAffixTypes : ["enchantment"], ignoreExistingGroups : true });
+    const enchantmentModId = PickRandomModFromListAndWeights(enchantmentModsAndWeights, context);
+    if (enchantmentModId) {
+      const enchantmentMod = CreateRolledMod(newItemState, enchantmentModId, false, context);
+      newItemState.enchantments = [enchantmentMod];
     }
   }
 
