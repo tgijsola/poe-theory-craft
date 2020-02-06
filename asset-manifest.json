@@ -1,22 +1,22 @@
 {
   "files": {
-    "main.css": "/poe-theory-craft/static/css/main.9877583c.chunk.css",
-    "main.js": "/poe-theory-craft/static/js/main.357c5127.chunk.js",
-    "main.js.map": "/poe-theory-craft/static/js/main.357c5127.chunk.js.map",
+    "main.css": "/poe-theory-craft/static/css/main.7c1f8a04.chunk.css",
+    "main.js": "/poe-theory-craft/static/js/main.7a5b1dd2.chunk.js",
+    "main.js.map": "/poe-theory-craft/static/js/main.7a5b1dd2.chunk.js.map",
     "runtime-main.js": "/poe-theory-craft/static/js/runtime-main.49a4fc52.js",
     "runtime-main.js.map": "/poe-theory-craft/static/js/runtime-main.49a4fc52.js.map",
-    "static/js/2.8f54da1a.chunk.js": "/poe-theory-craft/static/js/2.8f54da1a.chunk.js",
-    "static/js/2.8f54da1a.chunk.js.map": "/poe-theory-craft/static/js/2.8f54da1a.chunk.js.map",
+    "static/js/2.f8a2e980.chunk.js": "/poe-theory-craft/static/js/2.f8a2e980.chunk.js",
+    "static/js/2.f8a2e980.chunk.js.map": "/poe-theory-craft/static/js/2.f8a2e980.chunk.js.map",
     "index.html": "/poe-theory-craft/index.html",
-    "precache-manifest.d883b81a9bde8e173a930ffe9add4ffe.js": "/poe-theory-craft/precache-manifest.d883b81a9bde8e173a930ffe9add4ffe.js",
+    "precache-manifest.9ca6ea9776ceb496a541827fc3ce3315.js": "/poe-theory-craft/precache-manifest.9ca6ea9776ceb496a541827fc3ce3315.js",
     "service-worker.js": "/poe-theory-craft/service-worker.js",
-    "static/css/main.9877583c.chunk.css.map": "/poe-theory-craft/static/css/main.9877583c.chunk.css.map",
-    "static/js/2.8f54da1a.chunk.js.LICENSE": "/poe-theory-craft/static/js/2.8f54da1a.chunk.js.LICENSE"
+    "static/css/main.7c1f8a04.chunk.css.map": "/poe-theory-craft/static/css/main.7c1f8a04.chunk.css.map",
+    "static/js/2.f8a2e980.chunk.js.LICENSE": "/poe-theory-craft/static/js/2.f8a2e980.chunk.js.LICENSE"
   },
   "entrypoints": [
     "static/js/runtime-main.49a4fc52.js",
-    "static/js/2.8f54da1a.chunk.js",
-    "static/css/main.9877583c.chunk.css",
-    "static/js/main.357c5127.chunk.js"
+    "static/js/2.f8a2e980.chunk.js",
+    "static/css/main.7c1f8a04.chunk.css",
+    "static/js/main.7a5b1dd2.chunk.js"
   ]
 }
