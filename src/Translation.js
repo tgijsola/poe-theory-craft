@@ -37,7 +37,20 @@ export default class TranslationHelper {
         });
     }
 
+    static ModTypeTranslationLineOverrides = {
+        "DoubleModSellPrice1" : [ "Item sells for much more to vendors", "(3x Chaos Orbs)" ],
+        "DoubleModSellPrice2" : [ "Item sells for much more to vendors", "(Exalted Orb)" ],
+        "DoubleModSellPrice3" : [ "Item sells for much more to vendors", "(5x Orb of Alchemy)" ],
+        "DoubleModSellPrice4" : [ "Item sells for much more to vendors", "(3x Stacked Deck)" ],
+        "DoubleModSellPrice5" : [ "Item sells for much more to vendors", "(5x Wisdom / Alch / Chance / Transmute / Alt)" ],
+        "DoubleModSellPrice6" : [ "Item sells for much more to vendors", "(5x Albino Rhoa Feather)" ],
+        "DoubleModSellPrice7" : [ "Item sells for much more to vendors", "(1x Random Crafting Currency)" ],
+        "DoubleModSellPrice8" : [ "Item sells for much more to vendors", "(2x Mirror Shard)" ],
+        "DoubleModSellPrice9" : [ "Item sells for much more to vendors", "(5x Remnant of Corruption)" ],
+    }
+
     static GetTranslationLinesForMod = function(translationJson, mod, values = null) {
+        // End hacky mod translations
         let consumedIdxs = new Set();
         let translationLines = [];
         for (let statIdx in mod["stats"]) {
@@ -175,11 +188,19 @@ export default class TranslationHelper {
     }
 
     static TranslateMod = function(translationJson, mod, values = null) {
+        // Hacky mod translations go here!
+        if (mod.type in this.ModTypeTranslationLineOverrides) {
+            return [...this.ModTypeTranslationLineOverrides[mod.type]];
+        }
         const translationLines = this.GetTranslationLinesForMod(translationJson, mod, values);
         return this.GetStringsForTranslationLines(translationJson, translationLines);
     }
 
     static TranslateModForGroup = function(translationJson, mod) {
+        // Hacky mod translations go here!
+        if (mod.type in this.ModTypeTranslationLineOverrides) {
+            return [...this.ModTypeTranslationLineOverrides[mod.type]];
+        }                
         const translationLines = this.GetTranslationLinesForMod(translationJson, mod, null);
         return this.GetStringsForTranslationLines(translationJson, translationLines, "x");
     }    

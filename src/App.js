@@ -316,46 +316,61 @@ class ModGroup extends React.Component {
 
 class ModList extends React.Component {
   render() {
-    let modGroups = [];    
-    let modsAndWeights = null;
-    // TODO: Expand this to handle any mode
-    // IMMEDIATE TODO: This functionality should be re-usable by both this and FossilItem, and Essences should be exposed as their own table to roll on
-    if (this.props.fossilTypes && this.props.fossilTypes.length > 0) {
-      const weightParameters = GetWeightParametersForFossils(this.props.fossilTypes);
-      modsAndWeights = GetValidModsAndWeightsForItem(this.props.itemState, this.props.context, { ...weightParameters, ignoreAffixLimits : true, ignoreExistingGroups : true }).sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });      
-      for (const forcedModList of weightParameters.forcedModLists) {
-        const forcedModsAndWeights = GetValidModsAndWeightsForItem(this.props.itemState, this.props.context, { ...weightParameters, forcedModIds : forcedModList.modIds, ignoreAffixLimits : true, ignoreExistingGroups : true }).sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });
-        const forcedTotalWeight = forcedModsAndWeights.reduce( (total, value) => { return total + value.weight }, 0);
-        if (forcedModsAndWeights.length > 0) {
-          const modId = forcedModsAndWeights[0].modId;
+
+    const actionInfo = this.props.getActionInfoFunction(this.props.itemState, this.props.context, ...this.props.getActionInfoAdditionalParameters);
+    const modRollGroups = GetModRollGroupsForAction(this.props.itemState, actionInfo, this.props.context);
+
+    let modRolls = [];
+
+    for (let modsAndWeights of modRollGroups) {
+      let modGroups = [];
+      modsAndWeights.sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });
+      const totalWeight = modsAndWeights.reduce( (total, value) => { return total + value.weight }, 0);
+      let currentGroupIdx = modGroups.length - 1;
+      let currentGroupTableKey = "";
+      for (let modIdx = 0; modIdx < modsAndWeights.length; ++modIdx) {
+        const modId = modsAndWeights[modIdx].modId;
+        const groupedTableKey = this.props.context.modLookupTables.getGroupedTableKeyForMod(modId, this.props.context.mods[modId]);
+        if (groupedTableKey !== currentGroupTableKey) {
+          currentGroupIdx++;
+          currentGroupTableKey = groupedTableKey;
+          const groupName = TranslationHelper.TranslateModForGroup(stat_translations, this.props.context.mods[modId]);
           const groupSource = this.props.context.modLookupTables.getSource(modId);
-          modGroups.push({groupName: ["From " + fossils[forcedModList.fossilId]["name"]], groupSource: groupSource, groupKey: forcedModList.fossilId, totalWeight: forcedTotalWeight, modsAndWeights: forcedModsAndWeights});
+          modGroups.push({groupName: groupName, groupSource: groupSource, groupKey: modId + "|" + groupedTableKey, totalWeight: totalWeight, modsAndWeights: []});
         }
+        modGroups[currentGroupIdx].modsAndWeights.push(modsAndWeights[modIdx]);
       }
-    }
-    else {
-      modsAndWeights = GetValidModsAndWeightsForItem(this.props.itemState, this.props.context, { rarityOverride : "rare" }).sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });
+      modRolls.push(modGroups);
     }
 
-    const totalWeight = modsAndWeights.reduce( (total, value) => { return total + value.weight }, 0);
-    let currentGroupIdx = modGroups.length - 1;
-    let currentGroupTableKey = "";
-    for (let modIdx = 0; modIdx < modsAndWeights.length; ++modIdx) {
-      const modId = modsAndWeights[modIdx].modId;
-      const groupedTableKey = this.props.context.modLookupTables.getGroupedTableKeyForMod(modId, this.props.context.mods[modId]);
-      if (groupedTableKey !== currentGroupTableKey) {
-        currentGroupIdx++;
-        currentGroupTableKey = groupedTableKey;
-        const groupName = TranslationHelper.TranslateModForGroup(stat_translations, this.props.context.mods[modId]);
-        const groupSource = this.props.context.modLookupTables.getSource(modId);
-        modGroups.push({groupName: groupName, groupSource: groupSource, groupKey: modId + "|" + groupedTableKey, totalWeight: totalWeight, modsAndWeights: []});
-      }
-      modGroups[currentGroupIdx].modsAndWeights.push(modsAndWeights[modIdx]);
-    }
+    let modRollIndex = 0;
 
     return <div className="modList">
       {
-        modGroups.map((modAndWeightGroup) => <ModGroup groupSource={modAndWeightGroup.groupSource} groupName={modAndWeightGroup.groupName} onGroupClicked={this.props.onGroupClicked} modAndWeightGroup={modAndWeightGroup.modsAndWeights} groupKey={modAndWeightGroup.groupKey} totalWeight={modAndWeightGroup.totalWeight} itemState={this.props.itemState} context={this.props.context} collapsed={!this.props.expandedGroups.has(modAndWeightGroup.groupKey)} key={modAndWeightGroup.groupKey}/>)
+        modRolls.map((modRoll) => 
+          <div className="modRoll" key={actionInfo.rolls[modRollIndex].label}>
+            {
+              [ 
+                <div className="modRollLabelLine" key="modRollLabelLine"><div className="modRollLabel">{ actionInfo.rolls[modRollIndex++].label }</div></div>,
+                modRoll.map((modAndWeightGroup) => 
+                  <ModGroup 
+                    groupSource={modAndWeightGroup.groupSource} 
+                    groupName={modAndWeightGroup.groupName} 
+                    onGroupClicked={this.props.onGroupClicked} 
+                    modAndWeightGroup={modAndWeightGroup.modsAndWeights} 
+                    groupKey={modAndWeightGroup.groupKey} 
+                    totalWeight={modAndWeightGroup.totalWeight} 
+                    itemState={this.props.itemState} 
+                    context={this.props.context} 
+                    collapsed={!this.props.expandedGroups.has(modAndWeightGroup.groupKey)} 
+                    key={modAndWeightGroup.groupKey}
+                  />
+              )
+              ]
+            }
+          </div>
+        )
+        // modGroups.map((modAndWeightGroup) => <ModGroup groupSource={modAndWeightGroup.groupSource} groupName={modAndWeightGroup.groupName} onGroupClicked={this.props.onGroupClicked} modAndWeightGroup={modAndWeightGroup.modsAndWeights} groupKey={modAndWeightGroup.groupKey} totalWeight={modAndWeightGroup.totalWeight} itemState={this.props.itemState} context={this.props.context} collapsed={!this.props.expandedGroups.has(modAndWeightGroup.groupKey)} key={modAndWeightGroup.groupKey}/>)
       }
     </div>
   }
@@ -745,6 +760,10 @@ function RollRareName(itemState, rng) {
   return RareItemNames.GenerateRareName(itemData, rng);
 }
 
+function RollMagicAffixCount(itemState, rng) {
+  return randRange(rng, 1, 2);
+}
+
 function RollRareAffixCount(baseItemId, rng) {
   const maxAffixCount = GetAffixLimitForRarity(baseItemId, "rare");
   if (maxAffixCount === 6) {
@@ -825,22 +844,6 @@ function CreateItem(baseItemId, level, context) {
 function PickRandomModFromListAndWeights(modsAndWeights, context) {
   const weightedModPool = CreateWeightedModPool(modsAndWeights, context);
   return PickModFromWeightedModPool(weightedModPool, context);
-}
-
-function AddRandomModFromListAndWeights(itemState, modsAndWeights, rollsLucky, context) {
-  const modId = PickRandomModFromListAndWeights(modsAndWeights, context);
-  if (!modId) {
-    return [false, itemState];
-  }
-  let newItemState = cloneItemState(itemState);
-  newItemState.affixes.push(CreateRolledMod(itemState, modId, rollsLucky, context));
-  return [true, newItemState];  
-}
-
-function AddRandomMod(itemState, rollsLucky, context, extendedParameters = {}) {
-  let newItemState = cloneItemState(itemState);
-  const modsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, extendedParameters);
-  return AddRandomModFromListAndWeights(itemState, modsAndWeights, rollsLucky, context);
 }
 
 const generationTypeOrder = {
@@ -928,6 +931,165 @@ function AddInfluenceToItem(itemState, influence) {
   return [true, newState];
 }
 
+const AffixCountRule = {
+  RandomMagicAffixCount : "magic",
+  RandomRareAffixCount : "rare",
+  Exact : "exact",
+}
+
+const ActionInfo = {
+  setRarity : null,
+  clearAffixes : false,
+  generateNewName : false,
+  addInfluences : [],
+  affixCountRule : AffixCountRule.Exact,
+  affixCount : 0,
+  rolls : []
+}
+
+const ModRollInfo = {
+  weightParameters : {},
+  modType : "affix",
+  rollSelectionChance : 1.0,
+  rollsLucky : false,
+  forceWeights : -1,
+  fillRemainingAffixRolls : false,
+  label : "Affix Pool",
+}
+
+function GetModRollGroupsForAction(itemState, actionInfo, context) {
+  let newItemState = cloneItemState(itemState);
+  if (actionInfo.clearAffixes) {
+    newItemState.affixes = [];
+  }
+  if (actionInfo.setRarity) {
+    newItemState.rarity = actionInfo.setRarity;
+  }
+  if (actionInfo.generateNewName) {
+    newItemState.generatedName = RollRareName(itemState, context.rng);
+  }
+
+  for (const influence of actionInfo.addInfluences) {
+    [ , newItemState] = AddInfluenceToItem(newItemState, influence);
+  }
+
+  let modRollGroups = [];
+  for (const modRoll of actionInfo.rolls) {
+    const modsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, modRoll.weightParameters);
+    if (modRoll.forceWeights >= 0) {
+      for (let modAndWeight of modsAndWeights) {
+        modAndWeight.weight = modRoll.forceWeights;
+      }
+    }    
+    modRollGroups.push(modsAndWeights);
+  }
+  return modRollGroups;
+}
+
+function RollOnModRolls(itemState, modRolls, affixRollCount, context) {
+  let addedMods = 0;
+  let rolledAffixes = 0;
+  let modRollIdx = 0;
+  let newItemState = cloneItemState(itemState);
+  while (modRollIdx < modRolls.length) {
+    const modRoll = modRolls[modRollIdx];
+
+    if (modRoll.rollSelectionChance < 1.0) {
+      if (context.rng.quick() >= modRoll.rollSelectionChance) {
+        modRollIdx++;
+        continue;
+      }
+    }
+
+    if (modRoll.modType === "affix" && rolledAffixes >= affixRollCount) {
+      modRollIdx++;
+      continue;
+    }
+
+    const modsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, modRoll.weightParameters);
+    if (modRoll.forceWeights >= 0) {
+      for (let modAndWeight of modsAndWeights) {
+        modAndWeight.weight = modRoll.forceWeights;
+      }
+    }
+    const modId = PickRandomModFromListAndWeights(modsAndWeights, context);
+    if (modId) {
+      const mod = CreateRolledMod(newItemState, modId, modRoll.rollsLucky, context);
+      if (mod) {
+        newItemState = cloneItemState(newItemState);
+        switch (modRoll.modType) {
+          case "affix":
+            newItemState.affixes.push(mod);
+            break;
+          case "gildedImplicit":
+            newItemState.gildedImplicits = [mod];
+            break;
+          case "enchantment":
+            newItemState.enchantments = [mod];
+            break;
+          default:
+            break;
+        }
+        addedMods++;
+      }
+    
+      if (modRoll.modType === "affix") {
+        rolledAffixes++;
+      }
+
+      if (modRoll.modType === "affix" && modRoll.fillRemainingAffixRolls) {
+        continue;
+      }
+      modRollIdx++;
+      continue;
+    }    
+  }
+
+  if (addedMods === 0) {
+    return [false, itemState];
+  }
+
+  return [true, newItemState];
+}
+
+function TryApplyAction(itemState, actionInfo, context) {
+  let newItemState = cloneItemState(itemState);
+  if (actionInfo.clearAffixes) {
+    newItemState.affixes = [];
+  }
+  if (actionInfo.setRarity) {
+    newItemState.rarity = actionInfo.setRarity;
+  }
+  if (actionInfo.generateNewName) {
+    newItemState.generatedName = RollRareName(itemState, context.rng);
+  }
+
+  for (const influence of actionInfo.addInfluences) {
+    let [success, postInfluenceItemState] = AddInfluenceToItem(newItemState, influence);
+    if (!success) {
+      return [false, itemState];
+    }
+    newItemState = postInfluenceItemState;
+  }
+
+  let affixCount = 0;
+  switch (actionInfo.affixCountRule) {
+    case AffixCountRule.RandomMagicAffixCount:
+      affixCount = RollMagicAffixCount(itemState.baseItemId, context.rng);
+      break;
+    case AffixCountRule.RandomRareAffixCount:
+      affixCount = RollRareAffixCount(itemState.baseItemId, context.rng);
+      break;
+    case AffixCountRule.Exact:
+      affixCount = actionInfo.affixCount;
+      break;
+    default:
+      break;
+  }
+
+  return RollOnModRolls(newItemState, actionInfo.rolls, affixCount, context);
+}
+
 // eslint-disable-next-line no-unused-vars
 function CanScourItem(itemState, context) {
   if (itemState.rarity === "normal") {
@@ -965,18 +1127,21 @@ function CanTransmutationItem(itemState, context) {
   return true;
 }
 
+function GetTransmutationActionInfo(itemState, context) {
+  return { ...ActionInfo,
+    setRarity : "magic",
+    affixCountRule : AffixCountRule.RandomMagicAffixCount,
+    rolls : [{ ...ModRollInfo, modType : "affix", fillRemainingAffixRolls : true }],
+  };
+}
+
 function TransmutationItem(itemState, context) {
   if (!CanTransmutationItem(itemState, context)) {
     return [false, itemState];
   }
 
-  let newItemState = { ...cloneItemState(itemState), rarity : "magic" };
-  const numMods = randRange(context.rng, 1, 2);
-  for (let i = 0; i < numMods; ++i) {
-    newItemState = AddRandomMod(newItemState, false, context)[1];
-  }
-
-  return [true, newItemState];
+  const actionInfo = GetTransmutationActionInfo(itemState, context);
+  return TryApplyAction(itemState, actionInfo, context);
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -991,18 +1156,21 @@ function CanAlterationItem(itemState, context) {
   return true;
 }
 
+function GetAlterationActionInfo(itemState, context) {
+  return { ...ActionInfo,
+    clearAffixes : true,
+    affixCountRule : AffixCountRule.RandomMagicAffixCount,
+    rolls : [{ ...ModRollInfo, modType : "affix", fillRemainingAffixRolls : true }],
+  };
+}
+
 function AlterationItem(itemState, context) {
   if (!CanAlterationItem(itemState, context)) {
     return [false, itemState];
   }
 
-  let newItemState = { ...cloneItemState(itemState), affixes : [] };
-  const numMods = randRange(context.rng, 1, 2);
-  for (let i = 0; i < numMods; ++i) {
-    newItemState = AddRandomMod(newItemState, false, context)[1];
-  }
-
-  return [true, newItemState];
+  const actionInfo = GetAlterationActionInfo(itemState, context);
+  return TryApplyAction(itemState, actionInfo, context);
 }
 
 function CanAugmentationItem(itemState, context) {
@@ -1019,16 +1187,21 @@ function CanAugmentationItem(itemState, context) {
   return true;
 }
 
+function GetAugmentationActionInfo(itemState, context) {
+  return { ...ActionInfo,
+    affixCountRule : AffixCountRule.Exact,
+    affixCount : 1,
+    rolls : [{ ...ModRollInfo, modType : "affix" }],
+  };
+}
+
 function AugmentationItem(itemState, context) {
   if (!CanAugmentationItem(itemState, context)) {
     return [false, itemState];
   }
 
-  const [result, newItemState] = AddRandomMod(itemState, false, context);
-  if (!result) {
-    return [false, itemState];
-  }
-  return [true, newItemState];
+  const actionInfo = GetAugmentationActionInfo(itemState, context);
+  return TryApplyAction(itemState, actionInfo, context);
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -1046,17 +1219,23 @@ function CanRegalItem(itemState, context) {
   return true;
 }
 
+function GetRegalActionInfo(itemState, context) {
+  return { ...ActionInfo,
+    setRarity : "rare",
+    generateNewName : true,
+    affixCountRule : AffixCountRule.Exact,
+    affixCount : 1,
+    rolls : [{ ...ModRollInfo, modType : "affix" }],
+  };
+}
+
 function RegalItem(itemState, context) {
   if (!CanRegalItem(itemState, context)) {
     return [false, itemState];
   }
 
-  let rareItemState = { ...cloneItemState(itemState), rarity : "rare", generatedName : RollRareName(itemState, context.rng) };
-  const [result, newItemState] = AddRandomMod(rareItemState, false, context);
-  if (!result) {
-    return [false, itemState];
-  }
-  return [true, newItemState];
+  const actionInfo = GetRegalActionInfo(itemState, context);
+  return TryApplyAction(itemState, actionInfo, context);
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -1074,19 +1253,22 @@ function CanAlchemyItem(itemState, context) {
   return true;
 }
 
+function GetAlchemyActionInfo(itemState, context) {
+  return { ...ActionInfo,
+    setRarity : "rare",
+    generateNewName : true,
+    affixCountRule : AffixCountRule.RandomRareAffixCount,
+    rolls : [{ ...ModRollInfo, modType : "affix", fillRemainingAffixRolls : true, }],
+  };
+}
+
 function AlchemyItem(itemState, context) {
   if (!CanAlchemyItem(itemState, context)) {
     return [false, itemState];
   }
 
-  let newItemState = { ...cloneItemState(itemState), rarity : "rare", generatedName : RollRareName(itemState, context.rng) };
-  const numMods = RollRareAffixCount(itemState.baseItemId, context.rng);
-  for (let i = 0; i < numMods; ++i) {
-    newItemState = AddRandomMod(newItemState, false, context)[1];
-  }
-  newItemState.generatedName = RollRareName(itemState, context.rng);
-
-  return [true, newItemState];
+  const actionInfo = GetAlchemyActionInfo(itemState, context);
+  return TryApplyAction(itemState, actionInfo, context);
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -1101,18 +1283,22 @@ function CanChaosItem(itemState, context) {
   return true;
 }
 
+function GetChaosActionInfo(itemState, context) {
+  return { ...ActionInfo,
+    generateNewName : true,
+    clearAffixes : true,
+    affixCountRule : AffixCountRule.RandomRareAffixCount,
+    rolls : [{ ...ModRollInfo, modType : "affix", fillRemainingAffixRolls : true, }],
+  };
+}
+
 function ChaosItem(itemState, context) {
   if (!CanChaosItem(itemState, context)) {
     return [false, itemState];
   }
 
-  let newItemState = { ...cloneItemState(itemState), affixes : [], generatedName : RollRareName(itemState, context.rng)  };
-  const numMods = RollRareAffixCount(itemState.baseItemId, context.rng);
-  for (let i = 0; i < numMods; ++i) {
-    newItemState = AddRandomMod(newItemState, false, context)[1];
-  }
-
-  return [true, newItemState];
+  const actionInfo = GetChaosActionInfo(itemState, context);
+  return TryApplyAction(itemState, actionInfo, context);
 }
 
 function CanExaltedItem(itemState, context) {
@@ -1129,16 +1315,20 @@ function CanExaltedItem(itemState, context) {
   return true;
 }
 
+function GetExaltedActionInfo(itemState, context) {
+  return { ...ActionInfo,
+    affixCount : 1,
+    rolls : [{ ...ModRollInfo, modType : "affix" }],
+  };
+}
+
 function ExaltedItem(itemState, context) {
   if (!CanExaltedItem(itemState, context)) {
     return [false, itemState];
   }
 
-  const [result, newItemState] = AddRandomMod(itemState, false, context);
-  if (!result) {
-    return [false, itemState];
-  }
-  return [true, newItemState];
+  const actionInfo = GetExaltedActionInfo(itemState, context);
+  return TryApplyAction(itemState, actionInfo, context);
 }
 
 function CanExaltedWithInfluenceItem(itemState, context, influence) {
@@ -1162,15 +1352,25 @@ function CanExaltedWithInfluenceItem(itemState, context, influence) {
   return true;
 }
 
+function GetExaltedWithInfluenceActionInfo(itemState, context, influence) {
+  const influenceTag = GetInfluenceTag(itemState.baseItemId, influence);
+  return { ...ActionInfo,
+    clearAffixes : false,
+    generateNewName : false,
+    addInfluences : [influence],
+    affixCountRule : AffixCountRule.Exact,
+    affixCount : 1,
+    rolls : [{ ...ModRollInfo, modType : "affix", weightParameters : { requiredPositiveWeightTag : influenceTag } }],
+  };
+}
+
 function ExaltedWithInfluenceItem(itemState, context, influence) {
   if (!CanExaltedWithInfluenceItem(itemState, context, influence)) {
     return [false, itemState];
   }
 
-  let [ , newItemState] = AddInfluenceToItem(itemState, influence);
-  const influenceTag = GetInfluenceTag(newItemState.baseItemId, influence);
-  const validMods = GetValidModsAndWeightsForItem(newItemState, context, { requiredPositiveWeightTag : influenceTag });
-  return AddRandomModFromListAndWeights(newItemState, validMods, false, context);
+  const actionInfo = GetExaltedWithInfluenceActionInfo(itemState, context, influence);
+  return TryApplyAction(itemState, actionInfo, context);
 }
 
 function CanAnnulmentItem(itemState, context) {
@@ -1352,85 +1552,96 @@ function GetWeightParametersForFossils(fossilTypes) {
   }
 }
 
+function GetRollsForFossil(itemState, context) {
+  if (!CanFossilItem(...arguments)) {
+    return [];
+  }
+
+  let modRolls = [];
+
+  const fossilTypes = Array.prototype.slice.call(arguments, 2);
+  const weightParameters = GetWeightParametersForFossils(fossilTypes);
+  let mockItemState = { ...cloneItemState(itemState), rarity : "rare", affixes : [] };  
+
+  if (weightParameters.gildedFossilMods.length > 0) {
+    modRolls.push({...ModRollInfo,
+      weightParameters : { forcedModIds : weightParameters.gildedFossilMods, ignoreAffixTypes : true },
+      rollsLucky : weightParameters.rollsLucky, 
+      modType : "gildedImplicit",
+      label : "Gilded Fossil",
+    });
+  }
+
+  if (weightParameters.addsEnchant) {
+    modRolls.push({...ModRollInfo,
+      weightParameters : { forceAffixTypes : ["enchantment"], ignoreExistingGroups : true },
+      rollsLucky : weightParameters.rollsLucky,         
+      modType : "enchantment",
+      label : "Enchanted Fossil",
+    })
+  }
+
+  if (weightParameters.corruptedEssenceChances.length > 0) {
+    let essenceModIds = [];
+    const itemClass = base_items[mockItemState.baseItemId]["item_class"];
+    for (const essenceId in essences) {
+      const essence = essences[essenceId];
+      if (essence["type"]["is_corruption_only"]) {
+        if (itemClass in essence["mods"]) {
+          essenceModIds.push(essence["mods"][itemClass]);
+        }
+      }
+    }    
+
+    for (const corruptedEssenceChance of weightParameters.corruptedEssenceChances) {
+      modRolls.push({...ModRollInfo, 
+        weightParameters : { ignoreAffixLimits : true, ignoreSpawnWeight : true, forcedModIds : [...essenceModIds] },
+        rollSelectionChance : (corruptedEssenceChance / 100.0),
+        forceWeights : 100,
+        rollsLucky : weightParameters.rollsLucky,           
+        modType : "affix",
+        label : corruptedEssenceChance === 100 ? "Glyphic Fossil (100% Chance)" : "Tangled Fossil (10% Chance)"
+      });
+    }
+  }
+
+  for (const forcedModList of weightParameters.forcedModLists) {
+    modRolls.push({...ModRollInfo, 
+      weightParameters : { ...weightParameters, forcedModIds : forcedModList.modIds },
+      rollsLucky : weightParameters.rollsLucky,           
+      modType : "affix",
+      label : fossils[forcedModList.fossilId].name,
+    });
+  }
+
+  modRolls.push({...ModRollInfo, 
+    weightParameters : weightParameters,
+    rollsLucky : weightParameters.rollsLucky,           
+    modType : "affix", 
+    fillRemainingAffixRolls : true
+  });
+
+  return modRolls;
+}
+
+// eslint-disable-next-line no-unused-vars
+function GetFossilActionInfo(itemState, context) {
+  return { ...ActionInfo,
+    setRarity : "rare",
+    clearAffixes : true,
+    generateNewName : true,
+    affixCountRule : AffixCountRule.RandomRareAffixCount,
+    rolls : GetRollsForFossil(...arguments) 
+  };
+}
+
 function FossilItem(itemState, context) {
   if (!CanFossilItem(...arguments)) {
     return [false, itemState];
   }
 
-  const fossilTypes = Array.prototype.slice.call(arguments, 2);
-  const weightParameters = GetWeightParametersForFossils(fossilTypes);
-
-  let numMods = RollRareAffixCount(itemState.baseItemId, context.rng);
-  let newItemState = { ...cloneItemState(itemState), rarity : "rare", generatedName : RollRareName(itemState, context.rng), affixes : [] };  
-
-  if (weightParameters.gildedFossilMods.length > 0) {
-    const gildedImplicitModsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, { forcedModIds : weightParameters.gildedFossilMods, ignoreAffixTypes : true });
-    const gildedModId = PickRandomModFromListAndWeights(gildedImplicitModsAndWeights, context);
-    if (gildedModId) {
-      const gildedMod = CreateRolledMod(newItemState, gildedModId, false, context);
-      newItemState.gildedImplicits = [gildedMod];
-    }
-  }
-
-  if (weightParameters.addsEnchant) {
-    const enchantmentModsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, { forceAffixTypes : ["enchantment"], ignoreExistingGroups : true });
-    const enchantmentModId = PickRandomModFromListAndWeights(enchantmentModsAndWeights, context);
-    if (enchantmentModId) {
-      const enchantmentMod = CreateRolledMod(newItemState, enchantmentModId, false, context);
-      newItemState.enchantments = [enchantmentMod];
-    }
-  }
-
-  for (const corruptedEssenceChance of weightParameters.corruptedEssenceChances) {
-    const randRoll = randRange(context.rng, 0, 99);
-    if (randRoll < corruptedEssenceChance) {
-      let essenceModIds = [];
-      const itemClass = base_items[itemState.baseItemId]["item_class"];
-      for (const essenceId in essences) {
-        const essence = essences[essenceId];
-        if (essence["type"]["is_corruption_only"]) {
-          if (itemClass in essence["mods"]) {
-            essenceModIds.push(essence["mods"][itemClass]);
-          }
-        }
-      }
-      // NOTE: Many of the mods applied by corrupted essences don't have weights
-      // Therefore I'm assuming it just picks randomly from the available ones
-      const essenceModsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, { ignoreAffixLimits : true, ignoreSpawnWeight : true, forcedModIds : essenceModIds });
-      if (essenceModsAndWeights.length > 0) {
-        const essenceModIdx = randRange(context.rng, 0, essenceModsAndWeights.length - 1);
-        const essenceModId = essenceModsAndWeights[essenceModIdx].modId;
-        newItemState.affixes.push(CreateRolledMod(itemState, essenceModId, false, context));
-        numMods--;
-      }
-    }
-  }
-
-  for (const forcedModList of weightParameters.forcedModLists) {
-    const forcedModsAndWeights = GetValidModsAndWeightsForItem(newItemState, context, { ...weightParameters, forcedModIds : forcedModList.modIds });
-    if (forcedModsAndWeights.length > 0) {
-      const result = AddRandomModFromListAndWeights(newItemState, forcedModsAndWeights, weightParameters.rollsLucky, context);
-      if (result[0] === false) {
-        continue;
-      }
-      newItemState = result[1];
-      numMods--;
-    }
-  }
-
-  for (let i = 0; i < numMods; ++i) {
-    const validMods = GetValidModsAndWeightsForItem(newItemState, context, weightParameters);
-    if (validMods.length === 0) {
-      break;
-    }
-    const result = AddRandomModFromListAndWeights(newItemState, validMods, weightParameters.rollsLucky, context);
-    if (result[0] === false) {
-      break;
-    }
-    newItemState = result[1];
-  }
-
-  return [true, newItemState];
+  const actionInfo = GetFossilActionInfo(...arguments);
+  return TryApplyAction(itemState, actionInfo, context);
 }
 
 function CraftingButton(props) {
@@ -1465,6 +1676,22 @@ class TheoryCrafter extends React.Component {
       "fossil" : CanFossilItem,
     }
 
+    this.getActionInfoMap = {
+      "scour" : null,
+      "transmute" : GetTransmutationActionInfo,
+      "alt" : GetAlterationActionInfo,
+      "aug" : GetAugmentationActionInfo,
+      "regal" : GetRegalActionInfo,
+      "alch" : GetAlchemyActionInfo,
+      "chaos" : GetChaosActionInfo,
+      "exalt" : GetExaltedActionInfo,
+      "exalt_inf" : GetExaltedWithInfluenceActionInfo,
+      "annul" : null,
+      "bless" : null,
+      "divine" : null,
+      "fossil" : GetFossilActionInfo,
+    }
+
     this.actionMap = {
       "scour" : ScourItem,
       "transmute" : TransmutationItem,
@@ -1484,6 +1711,12 @@ class TheoryCrafter extends React.Component {
     this.theoryCrafterContext = new TheoryCrafterContext(_mods, seedrandom());
 
     const normalItemState = CreateItem("Metadata/Items/Armours/Boots/BootsAtlas1", 100, this.theoryCrafterContext);
+    // normalItemState.influences.push("shaper");
+    // normalItemState.influences.push("elder");
+    // normalItemState.influences.push("crusader");
+    // normalItemState.influences.push("hunter");
+    // normalItemState.influences.push("warlord");
+    // normalItemState.influences.push("redeemer");
     this.state = this.initState(normalItemState);
   }
 
@@ -1496,6 +1729,7 @@ class TheoryCrafter extends React.Component {
       selectedBaseLevel : initItemState.level,
       sortMods : false,
       selectedFossils : [],
+      selectedActionForModList : "",
       expandedGroups : new Set(),
     };
   }
@@ -1653,18 +1887,51 @@ class TheoryCrafter extends React.Component {
 
   handleFossilSelectorClicked(fossilId) {
     const idx = this.state.selectedFossils.findIndex((x) => { return x === fossilId });
+    let newState = null;
     if (idx >= 0) {
-      const newState = { ...this.state };
+      newState = { ...this.state };
       newState.selectedFossils.splice(idx, 1);
-      this.setState(newState);
     }
     else {
-      this.setState({ ...this.state, selectedFossils : [...this.state.selectedFossils, fossilId] });
+      newState = { ...this.state, selectedFossils : [...this.state.selectedFossils, fossilId] };
     }
+    // TODO: Delete this when user can manually select action for mod list
+    if (newState.selectedFossils.length > 0 && CanFossilItem(this.getState(), this.context, ...newState.selectedFossils)) {
+      newState.selectedActionForModList = "fossil";
+    }
+    else {
+      newState.selectedActionForModList = "";
+    }
+    this.setState(newState);
   }
 
   handleSortModsToggled(e) {
     this.setState( {...this.state, sortMods : e.target.checked} );
+  }
+
+  getActionInfoFunctionForModList() {
+    if (this.state.selectedActionForModList === "") {
+      const rarity = this.getState().rarity;
+      if (rarity === "normal") {
+        return this.getActionInfoMap["transmute"];
+      }
+      if (rarity === "magic") {
+        return this.getActionInfoMap["regal"];
+      }
+      if (rarity === "rare") {
+        return this.getActionInfoMap["exalt"];
+      }
+      return this.getActionInfoMap["exalt"];
+    }
+    return this.getActionInfoMap[this.state.selectedActionForModList];
+  }
+
+  getAdditionalActionParametersForModList() {
+    if (this.state.selectedActionForModList === "fossil") {
+      return [...this.state.selectedFossils];
+    }
+    // TODO: Add essences here!
+    return [];
   }
 
   rollTest() {
@@ -1760,10 +2027,24 @@ class TheoryCrafter extends React.Component {
         <div className="itemAndModListContainer" key="itemAndModListContainer">
           {[
             <div className="craftedItemContainer" key="craftedItemContainer">
-              <CraftedItem itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} sortMods={this.state.sortMods} key="craftedItem" />
+              <CraftedItem 
+                itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } 
+                context={this.theoryCrafterContext} 
+                sortMods={this.state.sortMods} 
+                key="craftedItem" 
+              />
             </div>,
             <div className="modListContainer" key="modListContainer">
-              <ModList expandedGroups={this.state.expandedGroups} onGroupClicked={(groupKey) => this.onGroupClicked(groupKey)} fossilTypes={this.state.selectedFossils} itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } context={this.theoryCrafterContext} key="modList" />
+              <ModList 
+                expandedGroups={this.state.expandedGroups} 
+                onGroupClicked={(groupKey) => this.onGroupClicked(groupKey)} 
+                getActionInfoFunction={this.getActionInfoFunctionForModList()}
+                getActionInfoAdditionalParameters={this.getAdditionalActionParametersForModList()}
+                fossilTypes={this.state.selectedFossils} 
+                itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } 
+                context={this.theoryCrafterContext} 
+                key="modList"
+              />
             </div>
           ]}
         </div>

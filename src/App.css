@@ -178,7 +178,7 @@ body {
   color:#ff9800;
 }
 .modProb.guaranteed {
-  color:#d500d6;
+  color:#ff1bff;
 }
 
 .craftedItem
@@ -270,6 +270,19 @@ body {
   border-style: solid;
 }
 
+.modRoll .modRollLabelLine {
+  padding: 5px;
+  display: grid;  
+  grid-template-columns: 48px 48px auto 80px 78px;    
+}
+
+.modRollLabelLine .modRollLabel {
+  color: white;
+  grid-column-start: 3;
+  grid-row: initial;
+  margin: 0 auto;
+}
+
 .modList .modGroupLine {
   /* Purply shaper color
   background: rgb(68,68,68);
@@ -285,51 +298,83 @@ body {
 }
 
 .delve .modGroupLine {
-  border-top-color: #d4c376;
+  /* border-top-color: #d4c376;
   background: rgb(170,89,8);
-  background: linear-gradient(180deg, rgba(170,89,8,1) 0%, rgba(79,44,14,1) 100%);
+  background: linear-gradient(180deg, rgba(170,89,8,1) 0%, rgba(79,44,14,1) 100%); */
+}
+
+.delve .modGroupLine .modName {
+  color: #fcce6a;
 }
 
 .essence .modGroupLine {
-  border-top-color: #ffa8eb;
+  /* border-top-color: #ffa8eb;
   background: rgb(142,63,119);
-  background: linear-gradient(180deg, rgba(142,63,119,1) 0%, rgba(84,58,78,1) 100%);
+  background: linear-gradient(180deg, rgba(142,63,119,1) 0%, rgba(84,58,78,1) 100%); */
+}
+
+.essence .modGroupLine .modName {
+  color: #ffa8eb;
 }
 
 .shaper .modGroupLine {
-  border-top-color: #ba50ff;
+  /* border-top-color: #ba50ff;
   background: rgb(94,46,125);
-  background: linear-gradient(180deg, rgba(94,46,125,1) 0%, rgba(66,34,85,1) 100%);
+  background: linear-gradient(180deg, rgba(94,46,125,1) 0%, rgba(66,34,85,1) 100%); */
+}
+
+.shaper .modGroupLine .modName {
+  color: #ca8aff;
 }
 
 .elder .modGroupLine {
-  border-top-color: #9f9aff;
+  /* border-top-color: #9f9aff;
   background: rgb(78,75,135);
-  background: linear-gradient(180deg, rgba(78,75,135,1) 0%, rgba(57,54,87,1) 100%);
+  background: linear-gradient(180deg, rgba(78,75,135,1) 0%, rgba(57,54,87,1) 100%); */
+}
+
+.elder .modGroupLine .modName {
+  color: #aba7ff;
 }
 
 .crusader .modGroupLine {
-  border-top-color: #db9a9a;
+  /* border-top-color: #db9a9a;
   background: rgb(135,75,75);
-  background: linear-gradient(180deg, rgba(135,75,75,1) 0%, rgba(87,54,54,1) 100%);
+  background: linear-gradient(180deg, rgba(135,75,75,1) 0%, rgba(87,54,54,1) 100%); */
+}
+
+.crusader .modGroupLine .modName {
+  color: #ffbebe;
 }
 
 .redeemer .modGroupLine {
-  border-top-color: #a4bad9;
+  /* border-top-color: #a4bad9;
   background: rgb(75,100,135);
-  background: linear-gradient(180deg, rgba(75,100,135,1) 0%, rgba(54,66,87,1) 100%);
+  background: linear-gradient(180deg, rgba(75,100,135,1) 0%, rgba(54,66,87,1) 100%); */
+}
+
+.redeemer .modGroupLine .modName {
+  color: #b8d8fd;
 }
 
 .hunter .modGroupLine {
-  border-top-color: #83c383;
+  /* border-top-color: #83c383;
   background: rgb(75,135,75);
-  background: linear-gradient(180deg, rgba(75,135,75,1) 0%, rgba(54,87,58,1) 100%);
+  background: linear-gradient(180deg, rgba(75,135,75,1) 0%, rgba(54,87,58,1) 100%); */
+}
+
+.hunter .modGroupLine .modName {
+  color: #b6ffaf;
 }
 
 .warlord .modGroupLine {
-  border-top-color: #d4d19f;
+  /* border-top-color: #d4d19f;
   background: rgb(135,132,75);
-  background: linear-gradient(180deg, rgba(135,132,75,1) 0%, rgba(85,87,54,1) 100%);
+  background: linear-gradient(180deg, rgba(135,132,75,1) 0%, rgba(85,87,54,1) 100%); */
+}
+
+.warlord .modGroupLine .modName {
+  color: #fff3b0;
 }
 
 .modList .modLine {
