@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/poe-theory-craft/precache-manifest.9ca6ea9776ceb496a541827fc3ce3315.js"
+  "/poe-theory-craft/precache-manifest.ce86d5d5db7fc15530bb365df625d609.js"
 );
 
 self.addEventListener('message', (event) => {
