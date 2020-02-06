@@ -1032,17 +1032,18 @@ function RollOnModRolls(itemState, modRolls, affixRollCount, context) {
         }
         addedMods++;
       }
-    
-      if (modRoll.modType === "affix") {
-        rolledAffixes++;
-      }
-
-      if (modRoll.modType === "affix" && modRoll.fillRemainingAffixRolls) {
-        continue;
-      }
-      modRollIdx++;
-      continue;
     }    
+    
+    if (modRoll.modType === "affix") {
+      rolledAffixes++;
+    }
+
+    if (modRoll.modType === "affix" && modRoll.fillRemainingAffixRolls) {
+      continue;
+    }
+
+    modRollIdx++;
+    continue;
   }
 
   if (addedMods === 0) {
@@ -1581,6 +1582,15 @@ function GetRollsForFossil(itemState, context) {
     })
   }
 
+  for (const forcedModList of weightParameters.forcedModLists) {
+    modRolls.push({...ModRollInfo, 
+      weightParameters : { ...weightParameters, forcedModIds : forcedModList.modIds },
+      rollsLucky : weightParameters.rollsLucky,           
+      modType : "affix",
+      label : fossils[forcedModList.fossilId].name,
+    });
+  }
+
   if (weightParameters.corruptedEssenceChances.length > 0) {
     let essenceModIds = [];
     const itemClass = base_items[mockItemState.baseItemId]["item_class"];
@@ -1603,15 +1613,6 @@ function GetRollsForFossil(itemState, context) {
         label : corruptedEssenceChance === 100 ? "Glyphic Fossil (100% Chance)" : "Tangled Fossil (10% Chance)"
       });
     }
-  }
-
-  for (const forcedModList of weightParameters.forcedModLists) {
-    modRolls.push({...ModRollInfo, 
-      weightParameters : { ...weightParameters, forcedModIds : forcedModList.modIds },
-      rollsLucky : weightParameters.rollsLucky,           
-      modType : "affix",
-      label : fossils[forcedModList.fossilId].name,
-    });
   }
 
   modRolls.push({...ModRollInfo, 
