@@ -302,7 +302,11 @@ class ModGroup extends React.Component {
     if (!this.props.collapsed) {
       elementList.push(...this.renderModsInModGroup(this.props.modAndWeightGroup, this.props.totalWeight));
     }
-    return <div className="modGroup" key={this.props.groupKey}>
+    let modGroupClassName = "modGroup";
+    if (this.props.groupSource) {
+      modGroupClassName = modGroupClassName + " " + this.props.groupSource;
+    }
+    return <div className={modGroupClassName} key={this.props.groupKey}>
       {
         elementList
       }
@@ -315,6 +319,7 @@ class ModList extends React.Component {
     let modGroups = [];    
     let modsAndWeights = null;
     // TODO: Expand this to handle any mode
+    // IMMEDIATE TODO: This functionality should be re-usable by both this and FossilItem, and Essences should be exposed as their own table to roll on
     if (this.props.fossilTypes && this.props.fossilTypes.length > 0) {
       const weightParameters = GetWeightParametersForFossils(this.props.fossilTypes);
       modsAndWeights = GetValidModsAndWeightsForItem(this.props.itemState, this.props.context, { ...weightParameters, ignoreAffixLimits : true, ignoreExistingGroups : true }).sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });      
@@ -322,7 +327,9 @@ class ModList extends React.Component {
         const forcedModsAndWeights = GetValidModsAndWeightsForItem(this.props.itemState, this.props.context, { ...weightParameters, forcedModIds : forcedModList.modIds, ignoreAffixLimits : true, ignoreExistingGroups : true }).sort((a, b) => { return ModIdComparer(a.modId, b.modId, this.props.context) });
         const forcedTotalWeight = forcedModsAndWeights.reduce( (total, value) => { return total + value.weight }, 0);
         if (forcedModsAndWeights.length > 0) {
-          modGroups.push({groupName: ["From " + fossils[forcedModList.fossilId]["name"]], groupKey: forcedModList.fossilId, totalWeight: forcedTotalWeight, modsAndWeights: forcedModsAndWeights});
+          const modId = forcedModsAndWeights[0].modId;
+          const groupSource = this.props.context.modLookupTables.getSource(modId);
+          modGroups.push({groupName: ["From " + fossils[forcedModList.fossilId]["name"]], groupSource: groupSource, groupKey: forcedModList.fossilId, totalWeight: forcedTotalWeight, modsAndWeights: forcedModsAndWeights});
         }
       }
     }
@@ -340,14 +347,15 @@ class ModList extends React.Component {
         currentGroupIdx++;
         currentGroupTableKey = groupedTableKey;
         const groupName = TranslationHelper.TranslateModForGroup(stat_translations, this.props.context.mods[modId]);
-        modGroups.push({groupName: groupName, groupKey: groupedTableKey, totalWeight: totalWeight, modsAndWeights: []});
+        const groupSource = this.props.context.modLookupTables.getSource(modId);
+        modGroups.push({groupName: groupName, groupSource: groupSource, groupKey: modId + "|" + groupedTableKey, totalWeight: totalWeight, modsAndWeights: []});
       }
       modGroups[currentGroupIdx].modsAndWeights.push(modsAndWeights[modIdx]);
     }
 
     return <div className="modList">
       {
-        modGroups.map((modAndWeightGroup) => <ModGroup groupName={modAndWeightGroup.groupName} onGroupClicked={this.props.onGroupClicked} modAndWeightGroup={modAndWeightGroup.modsAndWeights} groupKey={modAndWeightGroup.groupKey} totalWeight={modAndWeightGroup.totalWeight} itemState={this.props.itemState} context={this.props.context} collapsed={!this.props.expandedGroups.has(modAndWeightGroup.groupKey)} key={modAndWeightGroup.groupKey}/>)
+        modGroups.map((modAndWeightGroup) => <ModGroup groupSource={modAndWeightGroup.groupSource} groupName={modAndWeightGroup.groupName} onGroupClicked={this.props.onGroupClicked} modAndWeightGroup={modAndWeightGroup.modsAndWeights} groupKey={modAndWeightGroup.groupKey} totalWeight={modAndWeightGroup.totalWeight} itemState={this.props.itemState} context={this.props.context} collapsed={!this.props.expandedGroups.has(modAndWeightGroup.groupKey)} key={modAndWeightGroup.groupKey}/>)
       }
     </div>
   }
@@ -841,6 +849,18 @@ const generationTypeOrder = {
   "suffix": 2,
 };
 
+const sourceOrder = {
+  "delve" : 0,
+  "essence" : 1,
+  "shaper" : 2,
+  "elder" : 3,
+  "crusader" : 4,
+  "hunter" : 5,
+  "redeemer" : 6,
+  "warlord" : 7,
+  "" : 100,
+}
+
 function ModIdComparer (a, b, context) {
   const modA = context.mods[a];
   const modB = context.mods[b];
@@ -852,6 +872,12 @@ function ModIdComparer (a, b, context) {
       return generationTypeOrder[modAGenerationType] - generationTypeOrder[modBGenerationType];
     }
     return 0;
+  }
+
+  const modASource = context.modLookupTables.getSource(a);
+  const modBSource = context.modLookupTables.getSource(b);
+  if (modASource !== modBSource) {
+    return sourceOrder[modASource] - sourceOrder[modBSource];
   }
 
   const aStatIndices = context.modLookupTables.getStatLineIndices(a);
@@ -1414,7 +1440,7 @@ function CraftingButton(props) {
 class TheoryCrafterContext {
   constructor(modDatabase, rng) {
     this.mods = modDatabase;
-    this.modLookupTables = ModGroups.ParseModGroups(modDatabase, stats, mod_types);
+    this.modLookupTables = ModGroups.ParseModGroups(modDatabase, stats, item_classes, mod_types);
     this.rng = rng;
   }
 }

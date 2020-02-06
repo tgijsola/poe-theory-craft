@@ -52,19 +52,40 @@
 //     }
 // }
 
+export class InfluenceLookupTables {
+    constructor() {
+        this.influenceToTags = {};
+    }
+
+    add(influence, tag) {
+        if (!(influence in this.influenceToTags)) {
+            this.influenceToTags[influence] = [];
+        }
+        if (!this.influenceToTags[influence].includes(tag)) {
+            this.influenceToTags[influence].push(tag);
+        }
+    }
+
+    get(influence) {
+        return this.influenceToTags[influence];
+    }
+}
+
 export class ModLookupTables {
     constructor() {
         this.domainTable = {};
         this.groupedModTable = {};
         this.statLineIndices = {};
         this.tags = {};
+        this.source = {};
     }
 
-    add(modId, domain, group, type, statLineIndices, tags) {
+    add(modId, domain, group, type, source, statLineIndices, tags) {
         this.addToDomainTable(modId, domain);
         this.addToGroupedModTable(modId, domain, group, type, statLineIndices);
         this.addStatLineIndices(modId, statLineIndices);
         this.addTags(modId, tags);
+        this.addSource(modId, source);
     }
 
     addStatLineIndices(modId, statLineIndices)
@@ -75,6 +96,11 @@ export class ModLookupTables {
     addTags(modId, tags) 
     {
         this.tags[modId] = tags;
+    }
+
+    addSource(modId, source)
+    {
+        this.source[modId] = source;
     }
 
     addToDomainTable(modId, domain) {
@@ -119,6 +145,10 @@ export class ModLookupTables {
     getTags(modId) {
         return this.tags[modId];
     }
+
+    getSource(modId) {
+        return this.source[modId];
+    }
 }
 
 // export class ModGroup {
@@ -161,7 +191,19 @@ export class ModLookupTables {
 //     }
 // }
 
-export function ParseModGroups(mods, stats, mod_types) {
+export function ParseModGroups(mods, stats, item_classes, mod_types) {
+    let knownInfluences = ["crusader", "redeemer", "hunter", "warlord", "shaper", "elder"];
+    let influenceLookupTables = new InfluenceLookupTables();
+    for (const itemClassId in item_classes) {
+        const itemClass = item_classes[itemClassId];
+        for (const influenceId of knownInfluences) {
+            const influenceTag = influenceId + "_tag";
+            if (influenceTag in itemClass && itemClass[influenceTag]) {
+                influenceLookupTables.add(influenceId, itemClass[influenceTag]);
+            }
+        }
+    }
+
     let modLookupTables = new ModLookupTables();
 
     let statKeyToIndex = {};
@@ -173,12 +215,37 @@ export function ParseModGroups(mods, stats, mod_types) {
 
     for (const modId in mods) {
         const mod = mods[modId];
+
         let statIndices = [];
         for (const stat of mod["stats"]) {
             statIndices.push(statKeyToIndex[stat.id]);
         }
+
         let modTags = [ ...mod_types[mod["type"]]["tags"] ];
-        modLookupTables.add(modId, mod["domain"], mod["group"], mod["type"], statIndices, modTags);
+
+        let source = "";
+        if (mod["domain"] === "delve") {
+            source = "delve";
+        }
+        else if (mod["is_essence_only"]) {
+            source = "essence";
+        }
+        else {
+            for (const spawnWeight of mod["spawn_weights"]) {
+                if (spawnWeight["weight"] === 0) {
+                    continue;
+                }
+                for (const influenceId of knownInfluences) {
+                    const tagList = influenceLookupTables.get(influenceId);
+                    if (tagList.includes(spawnWeight["tag"])) {
+                        source = influenceId;
+                        break;
+                    }
+                }
+            }
+        }
+
+        modLookupTables.add(modId, mod["domain"], mod["group"], mod["type"], source, statIndices, modTags);
 
         // // Filter mods from unaccepted domains
         // if (!validModDomains.has(mod["domain"])) {
