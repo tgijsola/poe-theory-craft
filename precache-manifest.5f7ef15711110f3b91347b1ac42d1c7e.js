@@ -1,6 +1,6 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "49f7ae9e1ea61ca924636f3a91b741ea",
+    "revision": "f7c743ddfbdcd9ec7631edccc48fded2",
     "url": "/poe-theory-craft/index.html"
   },
   {
@@ -8,8 +8,8 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/poe-theory-craft/static/css/2.36392fb5.chunk.css"
   },
   {
-    "revision": "8e6c6576a0ebc0c92440",
-    "url": "/poe-theory-craft/static/css/main.13feef79.chunk.css"
+    "revision": "f87162886f4c3b22ad06",
+    "url": "/poe-theory-craft/static/css/main.3eff7cb0.chunk.css"
   },
   {
     "revision": "6b3b73b3a8b60255e915",
@@ -20,7 +20,7 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/poe-theory-craft/static/js/2.7af90a20.chunk.js.LICENSE"
   },
   {
-    "revision": "8e6c6576a0ebc0c92440",
+    "revision": "f87162886f4c3b22ad06",
     "url": "/poe-theory-craft/static/js/main.9a2bf896.chunk.js"
   },
   {
