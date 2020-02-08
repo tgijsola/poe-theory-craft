@@ -1652,7 +1652,17 @@ function NormalButton(props) {
 
 function CraftingButton(props) {
   return <div className="craftingButtonContainer">
-          <button className="craftingButton" selectedForModList={props.selectedForModList} onClick={props.onClick} disabled={!props.enabled} aria-label={props.itemTooltip} data-balloon-pos="up" data-balloon-nofocus left={props.left} right={props.right}>
+          <button 
+            className="craftingButton" 
+            selectedformodlist={props.selectedForModList} 
+            onClick={props.onClick} 
+            onContextMenu={props.onRightClick}
+            disabled={!props.enabled} 
+            aria-label={props.itemTooltip} 
+            data-balloon-pos="up" 
+            data-balloon-nofocus left={props.left} 
+            right={props.right}
+          >
           { 
             props.itemUrl ? 
               <div className="label">
@@ -1896,8 +1906,10 @@ class TheoryCrafter extends React.Component {
 
   RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction = null, dropdownEnabled = true) {
     const buttonOnClick = () => this.performAction(actionName, this.getState());
+    const buttonOnRightClick = (e) => this.selectActionForModList(e, actionName);
     const actionSplit = actionName.split(' ');
     const selectedForModList = this.getSelectedActionForModList() === actionSplit[0];
+    console.log(selectedForModList + " this.getSelectedActionForModList() " + this.getSelectedActionForModList() + ", actionSplit[0] " + actionSplit[0]);
     const isEnabled = this.canPerformAction(actionName, this.getState());
     const showDropDown = dropdownAction !== null;
 
@@ -1905,6 +1917,7 @@ class TheoryCrafter extends React.Component {
       itemUrl={itemUrl}
       itemTooltip={itemTooltip}
       onClick={buttonOnClick} 
+      onRightClick={buttonOnRightClick}
       enabled={isEnabled} 
       label={label} 
       selectedForModList={selectedForModList ? "true" : "false"}
@@ -1915,6 +1928,7 @@ class TheoryCrafter extends React.Component {
       craftingButtons.push(
         <CraftingButton
           onClick={dropdownAction} 
+          onRightClick={buttonOnRightClick}          
           enabled={dropdownEnabled}
           label="&#9881;"
           selectedForModList={selectedForModList ? "true" : "false"}
@@ -2239,6 +2253,14 @@ class TheoryCrafter extends React.Component {
     this.setState( {...this.state, sortMods : e.target.checked} );
   }
 
+  selectActionForModList(e, actionName) {
+    e.preventDefault();
+    const splitActionName = actionName.split(' ')[0];
+    if (splitActionName in this.getActionInfoMap && this.getActionInfoMap[splitActionName]) {
+      this.setState({...this.state, selectedActionForModList : (splitActionName === this.state.selectedActionForModList ? "" : splitActionName)});
+    }
+  }
+
   getSelectedActionForModList() {
     let selectedAction = (this.state.popupActionForModList || this.state.selectedActionForModList);
     return selectedAction;
@@ -2288,12 +2310,20 @@ class TheoryCrafter extends React.Component {
 
   toggleInfluencedExaltSelector() {
     let newState = { ...this.state, influencedExaltPopupShown : !this.state.influencedExaltPopupShown };
-    if (newState.influencedExaltPopupShown && 
-        CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, newState.selectedInfluenceExalt)) {
-      newState.popupActionForModList = "exalt_inf";
+    if (newState.influencedExaltPopupShown)
+    { 
+      if (CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, newState.selectedInfluenceExalt)) {
+        newState.popupActionForModList = "exalt_inf";
+      }
+      else {
+        newState.popupActionForModList = "";
+      }
     }
     else {
       newState.popupActionForModList = "";
+      if (CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, newState.selectedInfluenceExalt)) {
+        newState.selectedActionForModList = "exalt_inf";
+      }
     }
     this.setState(newState);
   }

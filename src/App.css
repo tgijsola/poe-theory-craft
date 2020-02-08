@@ -281,7 +281,7 @@ body {
   height : 45px;
 }
 
-.craftingButton[selectedForModList="true"] {
+.craftingButton[selectedformodlist="true"] {
   border-color: wheat;
   background-color: wheat;
 }
