@@ -4,6 +4,7 @@ import TranslationHelper from './Translation.js';
 import seedrandom from 'seedrandom';
 import RareItemNames from './RareItemnames.js';
 import ModGroups from './ModGroups.js';
+import 'balloon-css';
 
 import base_items from './data/base_items.json';
 import item_classes from './data/item_classes.json';
@@ -1645,8 +1646,25 @@ function FossilItem(itemState, context) {
   return TryApplyAction(itemState, actionInfo, context);
 }
 
+function NormalButton(props) {
+  return <button className="button" onClick={props.onClick} disabled={!props.enabled}>{props.label}</button>;  
+}
+
 function CraftingButton(props) {
-  return <button className="button" onClick={props.onClick} disabled={!props.enabled}>{props.label}</button>;
+  return <div className="craftingButtonContainer">
+          <button className="craftingButton" onClick={props.onClick} disabled={!props.enabled} aria-label={props.itemTooltip} data-balloon-pos="up" left={props.left} right={props.right}>
+          { 
+            props.itemUrl ? 
+              <div className="label">
+                <img src={props.itemUrl}></img>
+              </div> 
+              : 
+              <div className="label">
+                {props.label}
+              </div>
+          }
+          </button>
+        </div>;
 }
 
 class TheoryCrafterContext {
@@ -1712,12 +1730,6 @@ class TheoryCrafter extends React.Component {
     this.theoryCrafterContext = new TheoryCrafterContext(_mods, seedrandom());
 
     const normalItemState = CreateItem("Metadata/Items/Armours/Boots/BootsAtlas1", 100, this.theoryCrafterContext);
-    // normalItemState.influences.push("shaper");
-    // normalItemState.influences.push("elder");
-    // normalItemState.influences.push("crusader");
-    // normalItemState.influences.push("hunter");
-    // normalItemState.influences.push("warlord");
-    // normalItemState.influences.push("redeemer");
     this.state = this.initState(normalItemState);
   }
 
@@ -1876,14 +1888,67 @@ class TheoryCrafter extends React.Component {
     return <button onClick={() => this.handleBaseSelectButtonClicked()} key="baseItemCreateButton">Create New Item</button>;
   }
 
-  RenderCraftingButton(actionName, label) {
-    return <CraftingButton onClick={ () => this.performAction(actionName, this.getState()) } enabled={ this.canPerformAction(actionName, this.getState()) } label={label} key={actionName} />
+  RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction = null) {
+    const buttonOnClick = () => this.performAction(actionName, this.getState());
+    const isEnabled = this.canPerformAction(actionName, this.getState());
+    const showDropDown = dropdownAction !== null;
+
+    const craftingButtons = [<CraftingButton 
+      itemUrl={itemUrl}
+      itemTooltip={itemTooltip}
+      onClick={buttonOnClick} 
+      enabled={isEnabled} 
+      label={label} 
+      key={actionName} 
+      left={showDropDown ? "true" : "false"}
+    />]
+    if (showDropDown) {
+      craftingButtons.push(
+        <CraftingButton
+          onClick={dropdownAction} 
+          enabled={true}
+          label="▼"
+          key={actionName + "_dropdown"}
+          right="true"
+        />
+      );
+    }
+
+    return craftingButtons;
+  }
+
+  RenderCraftingButton(actionName, label, currencyImage, dropdownAction = null) {
+    const buttonOnClick = () => this.performAction(actionName, this.getState());
+    const isEnabled = this.canPerformAction(actionName, this.getState());
+
+    const baseItem = base_items[currencyImage];
+    if (!baseItem) {
+      console.log("No base item for " + currencyImage + " (label: " + label + ")");
+      return NormalButton({onClick : buttonOnClick, disabled: !isEnabled, label: label});
+    }
+  
+    let itemArtSubPath = baseItem.visual_identity.dds_file;
+    if (!itemArtSubPath) {
+      console.log("No item art for " + currencyImage + " (label: " + label + ")");
+      return NormalButton({onClick : buttonOnClick, disabled: !isEnabled, label: label});
+    }
+  
+    let itemTooltip = baseItem.name;
+  
+    const extensionIdx = itemArtSubPath.lastIndexOf('.');
+    if (extensionIdx >= 0) {
+      itemArtSubPath = itemArtSubPath.slice(0, extensionIdx);
+    }
+  
+    const itemUrl = "https://web.poecdn.com/image/" + itemArtSubPath + ".png";
+
+    return this.RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction);
   }
 
   RenderFossilSelector(fossilId, label) {
     const checked = this.state.selectedFossils.includes(fossilId);
     const enabled = this.state.selectedFossils.length < 4 || checked;
-    return <CraftingButton onClick={ () => this.handleFossilSelectorClicked(fossilId) } enabled={enabled} key={fossilId} label={(checked ? "☒" : "☐") + " " + label + " Fossil"} />
+    return <NormalButton onClick={ () => this.handleFossilSelectorClicked(fossilId) } enabled={enabled} key={fossilId} label={(checked ? "☒" : "☐") + " " + label + " Fossil"} />
   }
 
   handleFossilSelectorClicked(fossilId) {
@@ -1958,32 +2023,47 @@ class TheoryCrafter extends React.Component {
 
   render() {
     return [
+        // <div key="space">
+        //   &nbsp;
+        // </div>,
+        // <div className="craftingButtonContainer" key="buttonTest">
+        //   &nbsp;
+        //   <button className="craftingButton">
+        //     <div className="label">
+        //       <img src={CurrencyImages["CurrencyVaal.png"]}></img>
+        //     </div>
+        //   </button>
+        //   &nbsp;
+        //   <button className="craftingButton left">
+        //     <div className="label">
+        //       <img src={CurrencyImages["CurrencyModValues.png"]}></img>
+        //     </div>
+        //   </button>
+        //   <button className="craftingButton right">
+        //     <div className="label">
+        //     ▼
+        //     </div>
+        //   </button>          
+        //   &nbsp;
+        //   <button className="craftingButton left" disabled>
+        //     <div className="label">
+        //       <img src={CurrencyImages["CurrencyRerollRare.png"]}></img>
+        //     </div>
+        //   </button>
+        //   <button className="craftingButton right" disabled>
+        //     <div className="label">
+        //     ▼
+        //     </div>
+        //   </button>                    
+        // </div>,
+        // <div key="space2">
+        //   &nbsp;
+        // </div>,
         <div key="baseSelection">
           { [
             this.RenderBaseSelectList(),
             this.RenderBaseSelectLevel(),
             this.RenderBaseSelectButton(),
-          ] }
-        </div>,
-        <div key="craftingButtons">
-          { [
-            this.RenderCraftingButton("scour", "Scour"),
-            this.RenderCraftingButton("transmute", "Transmutation"),
-            this.RenderCraftingButton("aug", "Augmentation"),
-            this.RenderCraftingButton("alt", "Alteration"),
-            this.RenderCraftingButton("regal", "Regal"),
-            this.RenderCraftingButton("alch", "Alchemy"),
-            this.RenderCraftingButton("chaos", "Chaos"),
-            this.RenderCraftingButton("exalt", "Exalted"),
-            this.RenderCraftingButton("exalt_inf crusader", "Crusader Exalt"),
-            this.RenderCraftingButton("exalt_inf hunter", "Hunter Exalt"),
-            this.RenderCraftingButton("exalt_inf redeemer", "Redeemer Exalt"),
-            this.RenderCraftingButton("exalt_inf warlord", "Warlord Exalt"),
-            this.RenderCraftingButton("exalt_inf shaper", "{Shaper Exalt}"),
-            this.RenderCraftingButton("exalt_inf elder", "{Elder Exalt}"),
-            this.RenderCraftingButton("annul", "Annulment"),
-            this.RenderCraftingButton("bless", "Blessed"),
-            this.RenderCraftingButton("divine", "Divine")
           ] }
         </div>,
         <div key="fossilSelectors">
@@ -2015,19 +2095,42 @@ class TheoryCrafter extends React.Component {
             this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingVaal", "Bloodstained"),
           ] }
         </div>,
-        <div key="fossilButton">
-          { [
-            this.RenderCraftingButton(["fossil", ...this.state.selectedFossils].join(" "), "Fossil")
-          ] }
-        </div>,
-        <div key="undoDiv"><CraftingButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label={ this.getUndoLabel() } key="undo" /></div>,
-        <div key="redoDiv"><CraftingButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label={ this.getRedoLabel() } key="redo" /></div>,
-        <div key="rerollDiv"><CraftingButton onClick={ () => this.rerollAction() } enabled={ this.canRerollAction() } label={ this.getRerollLabel() } key="undo" /></div>,
+        <div key="undoDiv"><NormalButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label={ this.getUndoLabel() } key="undo" /></div>,
+        <div key="redoDiv"><NormalButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label={ this.getRedoLabel() } key="redo" /></div>,
+        <div key="rerollDiv"><NormalButton onClick={ () => this.rerollAction() } enabled={ this.canRerollAction() } label={ this.getRerollLabel() } key="undo" /></div>,
 //        <div key="rollTest"><CraftingButton onClick={ () => this.rollTest() } enabled={ true } label="Roll 100000" /></div>,
         <div key="sortMods"><input type="checkbox" onChange={(e) => this.handleSortModsToggled(e)} checked={this.state.sortMods} /><span style={{color: 'white'}}>Sort Mods</span></div>,
+        <div className="yetAnotherContainer" key="yetAnotherContainer">
+        <div className="everythingContainer" key="everythingContainer">
         <div className="itemAndModListContainer" key="itemAndModListContainer">
           {[
             <div className="craftedItemContainer" key="craftedItemContainer">
+              <div className="craftingButtonSection" key="craftingButtonSection">
+                <div className="craftingButtonLine" key="craftingButtonLine1">
+                { [
+                  this.RenderCraftingButton("transmute", "Transmutation", "Metadata/Items/Currency/CurrencyUpgradeToMagic"),
+                  this.RenderCraftingButton("aug", "Augmentation", "Metadata/Items/Currency/CurrencyAddModToMagic"),
+                  this.RenderCraftingButton("alt", "Alteration", "Metadata/Items/Currency/CurrencyRerollMagic"),
+                  this.RenderCraftingButton("regal", "Regal", "Metadata/Items/Currency/CurrencyUpgradeMagicToRare"),
+                  this.RenderCraftingButton("alch", "Alchemy", "Metadata/Items/Currency/CurrencyUpgradeToRare"),
+                  this.RenderCraftingButton("chaos", "Chaos", "Metadata/Items/Currency/CurrencyRerollRare"),
+                  this.RenderCraftingButton("exalt", "Exalted", "Metadata/Items/Currency/CurrencyAddModToRare"),
+                  this.RenderCraftingButtonManual(["fossil", ...this.state.selectedFossils].join(" "), "Fossil", "https://web.poecdn.com/image/Art/2DItems/Currency/Delve/Reroll2x2C.png", "Fossil", () => {})
+                ] }
+                </div>
+                <div className="craftingButtonLine" key="craftingButtonLine2">
+                { [
+                  this.RenderCraftingButton("scour", "Scour", "Metadata/Items/Currency/CurrencyConvertToNormal"),
+                  this.RenderCraftingButton("annul", "Annulment", "Metadata/Items/Currency/CurrencyRemoveMod"),
+                  this.RenderCraftingButton("bless", "Blessed", "Metadata/Items/Currency/CurrencyRerollImplicit"),
+                  this.RenderCraftingButton("divine", "Divine", "Metadata/Items/Currency/CurrencyModValues"),
+                  this.RenderCraftingButton("exalt_inf crusader", "Crusader Exalt", "Metadata/Items/AtlasExiles/AddModToRareCrusader"),
+                  this.RenderCraftingButton("exalt_inf hunter", "Hunter Exalt", "Metadata/Items/AtlasExiles/AddModToRareHunter"),
+                  this.RenderCraftingButton("exalt_inf redeemer", "Redeemer Exalt", "Metadata/Items/AtlasExiles/AddModToRareRedeemer"),
+                  this.RenderCraftingButton("exalt_inf warlord", "Warlord Exalt", "Metadata/Items/AtlasExiles/AddModToRareWarlord"),                      
+                ] }
+                </div>
+              </div>
               <CraftedItem 
                 itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } 
                 context={this.theoryCrafterContext} 
@@ -2048,6 +2151,8 @@ class TheoryCrafter extends React.Component {
               />
             </div>
           ]}
+        </div>
+        </div>
         </div>
     ]
   }

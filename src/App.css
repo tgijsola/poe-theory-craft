@@ -38,6 +38,68 @@ body {
   background-color: #eee;
 }
 
+.craftingButtonLine {
+  height: 60px;
+  display: flex;
+}
+
+.craftingButtonContainer {
+  margin : 5px 0px 5px 0px;  
+}
+
+.craftingButton {
+  background-color: #e8e8e8;
+  border-color: #ffffff;
+  border-radius: 5px 5px 5px 5px;
+  padding : 1px;
+  width : 60px;
+  height : 60px;
+  display : inline-block;
+}
+
+.craftingButton[left="true"] {
+  border-radius: 5px 0px 0px 5px;
+  border-right: 0px;
+  padding : 1px 2px 1px 1px;
+}
+
+.craftingButton[right="true"] {
+  border-radius: 0px 5px 5px 0px;
+  border-left: 1px solid gray;
+  width : 30px;
+  align-self: baseline;
+}
+
+.craftingButton:focus {
+  outline:0;
+}
+
+.craftingButton .label:active {
+  transform: translateY(1px);
+}
+
+.craftingButton .label img {
+  width: 50px;
+  height: 50px;
+}
+
+.craftingButton:disabled {
+  background-color: #555;
+  border-color: rgb(124, 124, 124);
+}
+
+.craftingButton[right="true"]:disabled {
+  border-left: 1px solid #333;  
+}
+
+.craftingButton:disabled .label:active {
+  transform: translateY(0px);
+}
+
+.craftingButton:disabled .label img {
+  filter: grayscale(100%);  
+}
+
 .craftedItem .separator {
   width: 200px;
   height: 8px;
@@ -64,8 +126,7 @@ body {
   font-size: 18px;
   font-family: 'FontinSmallCaps';
   border: 0px 0px 0px 0px;
-  position: sticky;
-  top: 100px;
+  display : inline-block;  
 }
 
 .craftedItem .content-box {
@@ -238,7 +299,7 @@ body {
 }
 
 .modList {
-  width: 800px;
+  width: 785;
   color: #eee;
   text-align: center;
   margin: 5px;
@@ -414,6 +475,17 @@ body {
   background-color:#222;
 }
 
+.yetAnotherContainer {
+  width : 100%;
+  text-align : center;
+  display : inline-block;
+}
+
+.everythingContainer {
+  text-align : center;
+  display : inline-block;
+}
+
 .itemAndModListContainer {
   display: grid;
   grid-template-columns: 600px 800px;  
@@ -423,6 +495,8 @@ body {
   grid-column-start: 1;
   grid-row: initial;
   margin: 0 auto;
+  text-align : center;
+  display : inline-block;
 }
 
 .itemAndModListContainer .modListContainer {
