@@ -1652,7 +1652,7 @@ function NormalButton(props) {
 
 function CraftingButton(props) {
   return <div className="craftingButtonContainer">
-          <button className="craftingButton" onClick={props.onClick} disabled={!props.enabled} aria-label={props.itemTooltip} data-balloon-pos="up" left={props.left} right={props.right}>
+          <button className="craftingButton" onClick={props.onClick} disabled={!props.enabled} aria-label={props.itemTooltip} data-balloon-pos="up" data-balloon-nofocus left={props.left} right={props.right}>
           { 
             props.itemUrl ? 
               <div className="label">
