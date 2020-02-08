@@ -1652,7 +1652,7 @@ function NormalButton(props) {
 
 function CraftingButton(props) {
   return <div className="craftingButtonContainer">
-          <button className="craftingButton" onClick={props.onClick} disabled={!props.enabled} aria-label={props.itemTooltip} data-balloon-pos="up" data-balloon-nofocus left={props.left} right={props.right}>
+          <button className="craftingButton" selectedForModList={props.selectedForModList} onClick={props.onClick} disabled={!props.enabled} aria-label={props.itemTooltip} data-balloon-pos="up" data-balloon-nofocus left={props.left} right={props.right}>
           { 
             props.itemUrl ? 
               <div className="label">
@@ -1741,10 +1741,15 @@ class TheoryCrafter extends React.Component {
       selectedBaseId : initItemState.baseItemId,
       selectedBaseLevel : initItemState.level,
       sortMods : false,
-      selectedFossils : [],
       selectedActionForModList : "",
+      popupActionForModList : "",
       expandedGroups : new Set(),
+
       fossilPopupShown : false,
+      selectedFossils : [],
+
+      influencedExaltPopupShown : false,
+      selectedInfluenceExalt : "crusader",
     };
   }
 
@@ -1889,8 +1894,10 @@ class TheoryCrafter extends React.Component {
     return <button onClick={() => this.handleBaseSelectButtonClicked()} key="baseItemCreateButton">Create New Item</button>;
   }
 
-  RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction = null) {
+  RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction = null, dropdownEnabled = true) {
     const buttonOnClick = () => this.performAction(actionName, this.getState());
+    const actionSplit = actionName.split(' ');
+    const selectedForModList = this.getSelectedActionForModList() === actionSplit[0];
     const isEnabled = this.canPerformAction(actionName, this.getState());
     const showDropDown = dropdownAction !== null;
 
@@ -1900,6 +1907,7 @@ class TheoryCrafter extends React.Component {
       onClick={buttonOnClick} 
       enabled={isEnabled} 
       label={label} 
+      selectedForModList={selectedForModList ? "true" : "false"}
       key={actionName} 
       left={showDropDown ? "true" : "false"}
     />]
@@ -1907,8 +1915,9 @@ class TheoryCrafter extends React.Component {
       craftingButtons.push(
         <CraftingButton
           onClick={dropdownAction} 
-          enabled={true}
+          enabled={dropdownEnabled}
           label="&#9881;"
+          selectedForModList={selectedForModList ? "true" : "false"}
           key={actionName + "_dropdown"}
           right="true"
         />
@@ -1918,7 +1927,7 @@ class TheoryCrafter extends React.Component {
     return craftingButtons;
   }
 
-  RenderCraftingButton(actionName, label, currencyImage, dropdownAction = null) {
+  RenderCraftingButton(actionName, label, currencyImage, dropdownAction = null, dropdownEnabled = true) {
     const buttonOnClick = () => this.performAction(actionName, this.getState());
     const isEnabled = this.canPerformAction(actionName, this.getState());
 
@@ -1943,7 +1952,7 @@ class TheoryCrafter extends React.Component {
   
     const itemUrl = "https://web.poecdn.com/image/" + itemArtSubPath + ".png";
 
-    return this.RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction);
+    return this.RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction, dropdownEnabled);
   }
 
   RenderCraftingPanel() {
@@ -1958,7 +1967,7 @@ class TheoryCrafter extends React.Component {
             this.RenderCraftingButton("alch", "Alchemy", "Metadata/Items/Currency/CurrencyUpgradeToRare"),
             this.RenderCraftingButton("chaos", "Chaos", "Metadata/Items/Currency/CurrencyRerollRare"),
             this.RenderCraftingButton("exalt", "Exalted", "Metadata/Items/Currency/CurrencyAddModToRare"),
-            this.RenderCraftingButtonManual(["fossil", ...this.state.selectedFossils].join(" "), "Fossil", "https://web.poecdn.com/image/Art/2DItems/Currency/Delve/Reroll2x2C.png", "Fossil", () => { this.toggleFossilSelector() })
+            this.RenderInfluencedExaltCraftingButton(),
           ]}
         </div>
         <div className="craftingButtonLine" key="craftingButtonLine2">
@@ -1967,10 +1976,7 @@ class TheoryCrafter extends React.Component {
             this.RenderCraftingButton("annul", "Annulment", "Metadata/Items/Currency/CurrencyRemoveMod"),
             this.RenderCraftingButton("bless", "Blessed", "Metadata/Items/Currency/CurrencyRerollImplicit"),
             this.RenderCraftingButton("divine", "Divine", "Metadata/Items/Currency/CurrencyModValues"),
-            this.RenderCraftingButton("exalt_inf crusader", "Crusader Exalt", "Metadata/Items/AtlasExiles/AddModToRareCrusader"),
-            this.RenderCraftingButton("exalt_inf hunter", "Hunter Exalt", "Metadata/Items/AtlasExiles/AddModToRareHunter"),
-            this.RenderCraftingButton("exalt_inf redeemer", "Redeemer Exalt", "Metadata/Items/AtlasExiles/AddModToRareRedeemer"),
-            this.RenderCraftingButton("exalt_inf warlord", "Warlord Exalt", "Metadata/Items/AtlasExiles/AddModToRareWarlord"),
+            this.RenderFossilCraftingButton(),
           ]}
         </div>
       </div>
@@ -1998,15 +2004,137 @@ class TheoryCrafter extends React.Component {
     </div>    
   }
 
+  RenderFossilCraftingButton() {
+    let dropdownEnabled = false;
+    for (const fossilId in fossils) {
+      if (CanFossilItem(this.getState(), this.theoryCrafterContext, fossilId)) {
+        dropdownEnabled = true;
+        break;
+      }
+    }
+    return this.RenderCraftingButtonManual(
+      ["fossil", ...this.state.selectedFossils].join(" "), 
+      "Fossil", 
+      "https://web.poecdn.com/image/Art/2DItems/Currency/Delve/Reroll2x2C.png", 
+      "Fossil", 
+      () => { this.toggleFossilSelector() },
+      dropdownEnabled
+    );
+  }
+
+  RenderInfluencedExaltCraftingButton() {
+    const influenceTypeToItemId = {
+      "crusader" : "Metadata/Items/AtlasExiles/AddModToRareCrusader",
+      "hunter" : "Metadata/Items/AtlasExiles/AddModToRareHunter",
+      "redeemer" : "Metadata/Items/AtlasExiles/AddModToRareRedeemer",
+      "warlord" : "Metadata/Items/AtlasExiles/AddModToRareWarlord"
+    };
+
+    const itemId = influenceTypeToItemId[this.state.selectedInfluenceExalt];
+    const item = base_items[itemId];
+    const itemName = item.name;
+
+    let dropdownEnabled = false;
+    for (const influenceType in influenceTypeToItemId) {
+      const canInfluence = CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, influenceType);
+      if (canInfluence) {
+        dropdownEnabled = true;
+        break;
+      }
+    }
+
+    return this.RenderCraftingButton("exalt_inf " + this.state.selectedInfluenceExalt, itemName, itemId, () => { this.toggleInfluencedExaltSelector() }, dropdownEnabled);
+  }
+
+  RenderInfluencedExaltPopup(isShown) {
+    if (isShown) {
+      return <div className="selectorPopup" key="influencedExaltPopup">
+                <div className="modal" onClick={() => this.toggleInfluencedExaltSelector()}></div>
+                <div className="selectorPopupContents">
+                  <div className="selectorPopupLabelLine" key="selectorPopupLabelLine">
+                  <div className="selectorPopupLabelLine">Select Influence</div>
+                  <div className="selectorPopupClose" onClick={() => this.toggleInfluencedExaltSelector()}>✖</div>
+                </div>
+                <div className="selectorPopupContainer">
+                  { [
+                    this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareCrusader", "crusader"),
+                    this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareHunter", "hunter"),
+                    this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareRedeemer", "redeemer"),
+                    this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareWarlord", "warlord"),
+                  ] }
+                </div>
+              </div>
+            </div>;
+    }
+    else {
+      return [];
+    }
+  }
+
+  RenderInfluencedExaltSelector(itemId, influenceType) {
+    const enabled = CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, influenceType);
+    const checked = (enabled && this.state.selectedInfluenceExalt === influenceType) ? "true" : null;
+    const item = base_items[itemId];
+    const itemName = item.name;
+    const itemDescription = item.properties.description;
+    let itemDescriptionSplit = ["<b>" + itemName + "</b>"];
+    itemDescriptionSplit = [...itemDescriptionSplit, itemDescription.split("\\r\\n")];
+
+    let itemDescriptionHtml = { __html: itemDescriptionSplit.join("<br />") };
+
+    let itemArtSubPath = item.visual_identity.dds_file;
+    if (!itemArtSubPath) {
+      itemArtSubPath = "Art/2DItems/Currency/Influence Exalts/CrusaderOrb";
+      console.log("No item art for " + itemId);
+    }
+    const extensionIdx = itemArtSubPath.lastIndexOf('.');
+    if (extensionIdx >= 0) {
+      itemArtSubPath = itemArtSubPath.slice(0, extensionIdx);
+    }
+  
+    const itemUrl = "'https://web.poecdn.com/image/" + itemArtSubPath + ".png'";
+
+    const buttonStyle = {
+      backgroundImage: 'url(' + itemUrl +')',
+    };
+
+    return  <button 
+              className="selectorPopupButton" 
+              disabled={!enabled} 
+              itemselected={checked} 
+              onClick={ (e) => this.handleInfluencedExaltSelectorClicked(e, influenceType) } 
+              key={itemId}
+              style={buttonStyle}
+            >
+                <span 
+                  className="label" 
+                  dangerouslySetInnerHTML={itemDescriptionHtml}
+                />
+            </button>
+  }
+
+  handleInfluencedExaltSelectorClicked(e, influenceType) {
+    e.stopPropagation();
+    let newState = { ...this.state, selectedInfluenceExalt: influenceType};
+    // TODO: Delete this when user can manually select action for mod list
+    if (CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, newState.selectedInfluenceExalt)) {
+      newState.popupActionForModList = "exalt_inf";
+    }
+    else {
+      newState.popupActionForModList = "";
+    }
+    this.setState(newState);
+  }
+
   RenderFossilPopup(isShown) {
     if (isShown) {
       return <div className="fossilPopup" key="fossilPopup">
-                { this.state.fossilPopupShown ? <div className="modal" onClick={() => this.toggleFossilSelector()}></div> : [] }
+               <div className="modal" onClick={() => this.toggleFossilSelector()}></div>
                 <div className="fossilPopupContents">
                   <div className="fossilPopupLabelLine" key="fossilPopupLabelLine">
                   <div className="fossilPopupLabelLine">Select Fossils</div>
                   <div className="fossilPopupClose" onClick={() => this.toggleFossilSelector()}>✖</div>
-                </div>              
+                </div>
                 <div className="fossilSelectorContainer">
                   { [
                     this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingChaos", "Aberrant"),
@@ -2043,7 +2171,7 @@ class TheoryCrafter extends React.Component {
 
   RenderFossilSelector(fossilId) {
     const checked = this.state.selectedFossils.includes(fossilId) ? "true" : null;
-    const enabled = (this.state.selectedFossils.length < 4 || checked) && CanFossilItem(this.getState(), this.context, fossilId);
+    const enabled = (this.state.selectedFossils.length < 4 || checked) && CanFossilItem(this.getState(), this.theoryCrafterContext, fossilId);
     const fossil = fossils[fossilId];
     const fossilName = fossil.name;
     const fossilDescriptions = fossil.descriptions;
@@ -2098,7 +2226,7 @@ class TheoryCrafter extends React.Component {
       newState = { ...this.state, selectedFossils : [...this.state.selectedFossils, fossilId] };
     }
     // TODO: Delete this when user can manually select action for mod list
-    if (newState.selectedFossils.length > 0 && CanFossilItem(this.getState(), this.context, ...newState.selectedFossils)) {
+    if (newState.selectedFossils.length > 0 && CanFossilItem(this.getState(), this.theoryCrafterContext, ...newState.selectedFossils)) {
       newState.selectedActionForModList = "fossil";
     }
     else {
@@ -2111,8 +2239,14 @@ class TheoryCrafter extends React.Component {
     this.setState( {...this.state, sortMods : e.target.checked} );
   }
 
+  getSelectedActionForModList() {
+    let selectedAction = (this.state.popupActionForModList || this.state.selectedActionForModList);
+    return selectedAction;
+  }
+
   getActionInfoFunctionForModList() {
-    if (this.state.selectedActionForModList === "") {
+    let selectedAction = (this.state.popupActionForModList || this.state.selectedActionForModList);
+    if (selectedAction === "") {
       const rarity = this.getState().rarity;
       if (rarity === "normal") {
         return this.getActionInfoMap["transmute"];
@@ -2125,12 +2259,16 @@ class TheoryCrafter extends React.Component {
       }
       return this.getActionInfoMap["exalt"];
     }
-    return this.getActionInfoMap[this.state.selectedActionForModList];
+    return this.getActionInfoMap[selectedAction];
   }
 
   getAdditionalActionParametersForModList() {
-    if (this.state.selectedActionForModList === "fossil") {
+    let selectedAction = (this.state.popupActionForModList || this.state.selectedActionForModList);
+    if (selectedAction === "fossil") {
       return [...this.state.selectedFossils];
+    }
+    if (selectedAction === "exalt_inf") {
+      return [this.state.selectedInfluenceExalt];
     }
     // TODO: Add essences here!
     return [];
@@ -2146,6 +2284,18 @@ class TheoryCrafter extends React.Component {
       newSet.add(groupKey);
     }
     this.setState({ ...this.state, expandedGroups : newSet });
+  }
+
+  toggleInfluencedExaltSelector() {
+    let newState = { ...this.state, influencedExaltPopupShown : !this.state.influencedExaltPopupShown };
+    if (newState.influencedExaltPopupShown && 
+        CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, newState.selectedInfluenceExalt)) {
+      newState.popupActionForModList = "exalt_inf";
+    }
+    else {
+      newState.popupActionForModList = "";
+    }
+    this.setState(newState);
   }
 
   toggleFossilSelector() {
@@ -2169,7 +2319,8 @@ class TheoryCrafter extends React.Component {
           {[
             this.RenderCraftingPanel(),
             this.RenderModListPanel(),
-            this.RenderFossilPopup(this.state.fossilPopupShown)
+            this.RenderFossilPopup(this.state.fossilPopupShown),
+            this.RenderInfluencedExaltPopup(this.state.influencedExaltPopupShown)
           ]}
         </div>
     ]
