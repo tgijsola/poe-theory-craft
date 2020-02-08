@@ -26,8 +26,125 @@
   src: local("☺"), url('/poe-theory-craft/font/fontin-bold-webfont.woff') format("woff")
 }
 
+html {
+  overflow-y: scroll;
+}
+
 body {
   background-color: #222;
+}
+
+.modal {
+  display: none;
+  background-color: rgb(0,0,0);
+  background-color: rgba(0,0,0,0.4);
+  overflow: auto;
+  z-index: 5;
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.modal * {
+  z-index: 5;
+  font-family: 'FontinSmallCaps';
+  font-size: 18px;
+}
+
+.modal[shown] {
+  display: block;
+}
+
+.modalContents {
+  color: white;
+  background-color: #000000;
+  border: 3px double;
+  border-color: #ddd;
+  z-index: 5;
+  margin: 100px;
+  top: 100px;
+  display: inline-block;
+}
+
+.modalLabelLine {
+  padding: 5px;
+  display: flex;
+}
+
+.modalLabelLine {
+  color: white;
+  grid-column-start: 3;
+  grid-row: initial;
+  margin: 0 auto;
+}
+
+.modalClose {
+  width: 30px;
+  cursor: pointer;
+  float: right;
+  text-align: center;
+  margin: auto 0;
+}
+
+.fossilSelectorContainer {
+  width: 740px;
+  height: 640px;
+  display: flex;
+  flex-wrap: wrap;
+  overflow: auto;
+}
+
+.fossilSelectorButton {
+  width : 360px;
+  height : 100px;
+  display: flex;
+  justify-content: left;
+  flex-direction: row;
+  background-color: #e8e8e8;
+  border-color: #ffffff;
+  border-radius: 5px 5px 5px 5px;
+  font-family: 'FontinSmallCaps';
+  font-size: 18px;  
+}
+
+.fossilSelectorButton:disabled {
+  background-color: #555;
+  border-color: rgb(124, 124, 124);
+}
+
+.fossilSelectorButton[fossilSelected=true] {
+  background-color: rgb(255, 235, 144);
+}
+
+.fossilSelectorButton:focus {
+  outline:0;
+}
+
+.fossilSelectorButton img {
+  align-self: center;
+  height: 80px;
+}
+
+.fossilSelectorButton .label {
+  width:100%;
+  height:100%;
+  text-align: center;
+  margin: auto;
+  font-size: 16px;  
+}
+
+.fossilSelectorButton img:active {
+  transform: translateY(1px);
+}
+
+.fossilSelectorButton .label:active {
+  transform: translateY(1px);
+}
+
+.fossilSelectorButton:disabled img {
+  filter: grayscale(100%);  
 }
 
 .button {
