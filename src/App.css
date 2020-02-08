@@ -35,73 +35,76 @@ body {
 }
 
 .modal {
-  display: none;
+  display: block;
   background-color: rgb(0,0,0);
-  background-color: rgba(0,0,0,0.4);
+  background-color: rgba(0,0,0,0.6);
   overflow: auto;
-  z-index: 5;
   position: fixed;
   left: 0;
   top: 0;
   width: 100%;
   height: 100%;
-}
-
-.modal * {
-  z-index: 5;
-  font-family: 'FontinSmallCaps';
-  font-size: 18px;
+  z-index: -1;  
 }
 
 .modal[shown] {
   display: block;
 }
 
-.modalContents {
-  color: white;
-  background-color: #000000;
-  border: 3px double;
-  border-color: #ddd;
-  z-index: 5;
-  margin: 100px;
-  top: 100px;
-  display: inline-block;
+.fossilPopup {
+  background-color: black;
+  position: absolute;
+  top: 0px;
+  border: 3px double white;
 }
 
-.modalLabelLine {
+.fossilPopupLabelLine {
   padding: 5px;
   display: flex;
 }
 
-.modalLabelLine {
+.fossilPopupLabelLine {
   color: white;
   grid-column-start: 3;
   grid-row: initial;
   margin: 0 auto;
 }
 
-.modalClose {
+.fossilPopupClose {
   width: 30px;
   cursor: pointer;
   float: right;
   text-align: center;
   margin: auto 0;
 }
-
 .fossilSelectorContainer {
-  width: 740px;
-  height: 640px;
+  width: 450px;
   display: flex;
   flex-wrap: wrap;
   overflow: auto;
 }
 
+/* Hide scrollbar for Chrome, Safari and Opera */
+.fossilSelectorContainer::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE and Edge */
+.fossilSelectorContainer {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 .fossilSelectorButton {
-  width : 360px;
-  height : 100px;
+  width : 225px;
+  height : 85px;
   display: flex;
-  justify-content: left;
-  flex-direction: row;
+  background-size: 50px 50px;
+  background-position: left center;
+  background-position-x: 10px;
+  background-repeat: no-repeat;
+  justify-content: right;
+  flex-direction: row-reverse;
   background-color: #e8e8e8;
   border-color: #ffffff;
   border-radius: 5px 5px 5px 5px;
@@ -122,17 +125,12 @@ body {
   outline:0;
 }
 
-.fossilSelectorButton img {
-  align-self: center;
-  height: 80px;
-}
-
 .fossilSelectorButton .label {
-  width:100%;
+  width:90%;
   height:100%;
   text-align: center;
-  margin: auto;
-  font-size: 16px;  
+  font-size: 14px;
+  text-shadow: 1px 1px white;
 }
 
 .fossilSelectorButton img:active {
@@ -147,6 +145,11 @@ body {
   filter: grayscale(100%);  
 }
 
+.fossilSelectorButton:disabled .label {
+  color : #888;
+  text-shadow: 1px 1px #444;  
+}
+
 .button {
   background-color: wheat;
 }
@@ -157,7 +160,7 @@ body {
 
 .craftingButtonLine {
   width: 100%;
-  height: 60px;
+  height: 45px;
   display: flex;
   justify-content: center;
   flex-flow: row;
@@ -175,8 +178,8 @@ body {
   border-color: #ffffff;
   border-radius: 5px 5px 5px 5px;
   padding : 1px;
-  width : 60px;
-  height : 60px;
+  width : 45px;
+  height : 45px;
 }
 
 .craftingButton[left="true"] {
@@ -201,8 +204,8 @@ body {
 }
 
 .craftingButton .label img {
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
 }
 
 .craftingButton:disabled {
@@ -421,16 +424,23 @@ body {
   background-image: url('/poe-theory-craft/img/elder-symbol.png');
 }
 
+.modRoll .modRollLabelLine {
+  padding: 5px;
+}
+
+.modRollLabelLine .modRollLabel {
+  color: white;
+  margin: 0 auto;
+}
+
 .modList {
   width: 785;
   color: #eee;
   text-align: center;
-  margin: 5px;
   font-size: 16px;
   font-family: 'FontinSmallCaps';
   border-style: solid;
   border-width: 3px;
-  padding: 1px;
 }
 
 .modList .modGroup {
@@ -445,116 +455,49 @@ body {
 }
 
 .modGroup .modGroupLine:hover {
-  background-color: #444;
+  background: rgb(80,80,80);
 }
 
 .modList .modLine, .modList .modGroupLine {
-  display: grid;
-  grid-template-rows: auto;
+  display: flex;
+  flex-direction: row;
   border-style: solid;
-}
-
-.modRoll .modRollLabelLine {
-  padding: 5px;
-  display: grid;  
-  grid-template-columns: 48px 48px auto 80px 78px;    
-}
-
-.modRollLabelLine .modRollLabel {
-  color: white;
-  grid-column-start: 3;
-  grid-row: initial;
-  margin: 0 auto;
+  cursor: default;
 }
 
 .modList .modGroupLine {
-  /* Purply shaper color
-  background: rgb(68,68,68);
-  background: linear-gradient(180deg, rgba(68,68,68,1) 0%, rgba(24,0,69,1) 100%); 
-  */
   background: rgb(68,68,68);
   background: linear-gradient(180deg, rgba(68,68,68,1) 0%, rgba(54,54,54,1) 100%);
 
-  grid-template-columns: 48px 48px auto 80px 78px;  
-  grid-auto-flow: column;
-
   text-shadow: 1px 1px #000000;
-}
-
-.delve .modGroupLine {
-  /* border-top-color: #d4c376;
-  background: rgb(170,89,8);
-  background: linear-gradient(180deg, rgba(170,89,8,1) 0%, rgba(79,44,14,1) 100%); */
 }
 
 .delve .modGroupLine .modName {
   color: #fcce6a;
 }
 
-.essence .modGroupLine {
-  /* border-top-color: #ffa8eb;
-  background: rgb(142,63,119);
-  background: linear-gradient(180deg, rgba(142,63,119,1) 0%, rgba(84,58,78,1) 100%); */
-}
-
 .essence .modGroupLine .modName {
   color: #ffa8eb;
-}
-
-.shaper .modGroupLine {
-  /* border-top-color: #ba50ff;
-  background: rgb(94,46,125);
-  background: linear-gradient(180deg, rgba(94,46,125,1) 0%, rgba(66,34,85,1) 100%); */
 }
 
 .shaper .modGroupLine .modName {
   color: #ca8aff;
 }
 
-.elder .modGroupLine {
-  /* border-top-color: #9f9aff;
-  background: rgb(78,75,135);
-  background: linear-gradient(180deg, rgba(78,75,135,1) 0%, rgba(57,54,87,1) 100%); */
-}
-
 .elder .modGroupLine .modName {
   color: #aba7ff;
-}
-
-.crusader .modGroupLine {
-  /* border-top-color: #db9a9a;
-  background: rgb(135,75,75);
-  background: linear-gradient(180deg, rgba(135,75,75,1) 0%, rgba(87,54,54,1) 100%); */
 }
 
 .crusader .modGroupLine .modName {
   color: #ffbebe;
 }
 
-.redeemer .modGroupLine {
-  /* border-top-color: #a4bad9;
-  background: rgb(75,100,135);
-  background: linear-gradient(180deg, rgba(75,100,135,1) 0%, rgba(54,66,87,1) 100%); */
-}
-
 .redeemer .modGroupLine .modName {
   color: #b8d8fd;
 }
 
-.hunter .modGroupLine {
-  /* border-top-color: #83c383;
-  background: rgb(75,135,75);
-  background: linear-gradient(180deg, rgba(75,135,75,1) 0%, rgba(54,87,58,1) 100%); */
-}
-
 .hunter .modGroupLine .modName {
   color: #b6ffaf;
-}
-
-.warlord .modGroupLine {
-  /* border-top-color: #d4d19f;
-  background: rgb(135,132,75);
-  background: linear-gradient(180deg, rgba(135,132,75,1) 0%, rgba(85,87,54,1) 100%); */
 }
 
 .warlord .modGroupLine .modName {
@@ -572,17 +515,42 @@ body {
   margin: auto;
 }
 
+.modGroupLine .modTier {
+  flex: 0 0 auto;
+  width: 25px;
+}
+
+.modLine .modLevel {
+  flex: 0 0 auto;
+  width: 25px;
+}
+
+.modGroupLine .modTierContents {
+  flex: 0 0 auto;
+  width: 60px;
+}
+
+.modLine .modTier {
+  flex: 0 0 auto;
+  width: 60px;
+}
+
 .modLine .modName, .modGroupLine .modName {
+  flex: 1 1 auto;
   padding: 2px;
   margin: auto;  
 }
 
 .modLine .modWeight, .modGroupLine .modWeight {
+  flex: 0 0 auto;
+  width: 60px;
   padding: 2px;
   margin: auto;  
 }
 
 .modLine .modProb, .modGroupLine .modProb {
+  flex: 0 0 auto;
+  width: 60px;
   padding: 2px;
   margin: auto;  
 }
@@ -598,32 +566,22 @@ body {
   background-color:#222;
 }
 
-.yetAnotherContainer {
-  width : 100%;
-  text-align : center;
-  display : inline-block;
+.bottomPanel {
+  position: relative;
+  max-width: 1280px;
+  margin: 0 auto;
+  z-index: 100;
 }
 
-.everythingContainer {
-  text-align : center;
-  display : inline-block;
-}
-
-.itemAndModListContainer {
-  display: grid;
-  grid-template-columns: 600px 800px;  
-}
-
-.itemAndModListContainer .craftedItemContainer {
-  grid-column-start: 1;
-  grid-row: initial;
+.bottomPanel .craftedItemContainer {
+  position: absolute;
+  width: 450px;
   margin: 0 auto;
   text-align : center;
   display : flex;
   flex-direction: column;
 }
 
-.itemAndModListContainer .modListContainer {
-  grid-column-start: 2;
-  grid-row: initial;  
+.bottomPanel .modListContainer {
+  margin-left: 450px;
 }

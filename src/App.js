@@ -233,7 +233,7 @@ class ModListModLine extends React.Component {
     }
 
     return <div className="modLine">
-      <div className="requiredLevel" key="modLevel">
+      <div className="modLevel" key="modLevel">
         { this.props.requiredLevel }
       </div>
       <div className={tierClass} key="modTier">
@@ -1946,43 +1946,95 @@ class TheoryCrafter extends React.Component {
     return this.RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction);
   }
 
+  RenderCraftingPanel() {
+    return <div className="craftedItemContainer" key="craftedItemContainer">
+      <div className="craftingButtonSection" key="craftingButtonSection">
+        <div className="craftingButtonLine" key="craftingButtonLine1">
+          {[
+            this.RenderCraftingButton("transmute", "Transmutation", "Metadata/Items/Currency/CurrencyUpgradeToMagic"),
+            this.RenderCraftingButton("aug", "Augmentation", "Metadata/Items/Currency/CurrencyAddModToMagic"),
+            this.RenderCraftingButton("alt", "Alteration", "Metadata/Items/Currency/CurrencyRerollMagic"),
+            this.RenderCraftingButton("regal", "Regal", "Metadata/Items/Currency/CurrencyUpgradeMagicToRare"),
+            this.RenderCraftingButton("alch", "Alchemy", "Metadata/Items/Currency/CurrencyUpgradeToRare"),
+            this.RenderCraftingButton("chaos", "Chaos", "Metadata/Items/Currency/CurrencyRerollRare"),
+            this.RenderCraftingButton("exalt", "Exalted", "Metadata/Items/Currency/CurrencyAddModToRare"),
+            this.RenderCraftingButtonManual(["fossil", ...this.state.selectedFossils].join(" "), "Fossil", "https://web.poecdn.com/image/Art/2DItems/Currency/Delve/Reroll2x2C.png", "Fossil", () => { this.toggleFossilSelector() })
+          ]}
+        </div>
+        <div className="craftingButtonLine" key="craftingButtonLine2">
+          {[
+            this.RenderCraftingButton("scour", "Scour", "Metadata/Items/Currency/CurrencyConvertToNormal"),
+            this.RenderCraftingButton("annul", "Annulment", "Metadata/Items/Currency/CurrencyRemoveMod"),
+            this.RenderCraftingButton("bless", "Blessed", "Metadata/Items/Currency/CurrencyRerollImplicit"),
+            this.RenderCraftingButton("divine", "Divine", "Metadata/Items/Currency/CurrencyModValues"),
+            this.RenderCraftingButton("exalt_inf crusader", "Crusader Exalt", "Metadata/Items/AtlasExiles/AddModToRareCrusader"),
+            this.RenderCraftingButton("exalt_inf hunter", "Hunter Exalt", "Metadata/Items/AtlasExiles/AddModToRareHunter"),
+            this.RenderCraftingButton("exalt_inf redeemer", "Redeemer Exalt", "Metadata/Items/AtlasExiles/AddModToRareRedeemer"),
+            this.RenderCraftingButton("exalt_inf warlord", "Warlord Exalt", "Metadata/Items/AtlasExiles/AddModToRareWarlord"),
+          ]}
+        </div>
+      </div>
+      <CraftedItem
+        itemState={this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState}
+        context={this.theoryCrafterContext}
+        sortMods={this.state.sortMods}
+        key="craftedItem"
+      />
+    </div>
+  }
+
+  RenderModListPanel() {
+    return <div className="modListContainer" key="modListContainer">
+      <ModList
+        expandedGroups={this.state.expandedGroups}
+        onGroupClicked={(groupKey) => this.onGroupClicked(groupKey)}
+        getActionInfoFunction={this.getActionInfoFunctionForModList()}
+        getActionInfoAdditionalParameters={this.getAdditionalActionParametersForModList()}
+        fossilTypes={this.state.selectedFossils}
+        itemState={this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState}
+        context={this.theoryCrafterContext}
+        key="modList"
+      />
+    </div>    
+  }
+
   RenderFossilPopup(isShown) {
     if (isShown) {
-      return <div className="modal" shown="true" key="modal" onClick={() => this.toggleFossilSelector()}>
-        <div className="modalContents">
-          <div className="modalLabelLine" key="modalLabelLine">
-            <div className="modalLabelLine">Select Fossils</div>
-            <div className="modalClose">✖</div>
-          </div>
-          <div className="fossilSelectorContainer">
-            {/* <button className="fossilSelectorButton"><img src="https://web.poecdn.com/image/Art/2DItems/Currency/Delve/Reroll2x2C.png"></img><span className="label">Aetheric Fossil<br />More Armour, Energy Shield or Evasion modifiers<br />No Life modifiers</span></button> */}
-            { [
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingAbyss", "Hollow"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingAttackMods", "Serrated"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingBleedPoison", "Corroded"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingCasterMods", "Aetheric"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingChaos", "Aberrant"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingCold", "Frigid"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingCorruptEssence", "Glyphic"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingDefences", "Dense"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingElemental", "Prismatic"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingEnchant", "Enchanted"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingFire", "Scorched"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingGemLevel", "Faceted"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingLife", "Pristine"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingLightning", "Metallic"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingLuckyModRolls", "Sanctified"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingMana", "Lucent"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingMinionsAuras", "Bound"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingPhysical", "Jagged"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingRandom", "Tangled"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingSellPrice", "Gilded"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingSpeed", "Shuddering"),
-              this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingVaal", "Bloodstained"),
-            ] }
-          </div>
-        </div>    
-      </div>;
+      return <div className="fossilPopup">
+                { this.state.fossilPopupShown ? <div className="modal" onClick={() => this.toggleFossilSelector()}></div> : [] }
+                <div className="fossilPopupContents">
+                  <div className="fossilPopupLabelLine" key="fossilPopupLabelLine">
+                  <div className="fossilPopupLabelLine">Select Fossils</div>
+                  <div className="fossilPopupClose" onClick={() => this.toggleFossilSelector()}>✖</div>
+                </div>              
+                <div className="fossilSelectorContainer">
+                  { [
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingChaos", "Aberrant"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingCasterMods", "Aetheric"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingVaal", "Bloodstained"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingMinionsAuras", "Bound"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingBleedPoison", "Corroded"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingDefences", "Dense"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingEnchant", "Enchanted"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingGemLevel", "Faceted"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingCold", "Frigid"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingSellPrice", "Gilded"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingCorruptEssence", "Glyphic"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingAbyss", "Hollow"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingPhysical", "Jagged"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingMana", "Lucent"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingLightning", "Metallic"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingElemental", "Prismatic"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingLife", "Pristine"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingLuckyModRolls", "Sanctified"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingFire", "Scorched"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingAttackMods", "Serrated"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingSpeed", "Shuddering"),
+                    this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingRandom", "Tangled"),
+                  ] }
+                </div>
+              </div>
+            </div>;
     }
     else {
       return [];
@@ -2015,10 +2067,23 @@ class TheoryCrafter extends React.Component {
   
     const itemUrl = "https://web.poecdn.com/image/" + itemArtSubPath + ".png";
 
-    return <button className="fossilSelectorButton" disabled={!enabled} fossilSelected={checked} onClick={ (e) => this.handleFossilSelectorClicked(e, fossilId) } key={fossilId}>
-        <img src={itemUrl}></img>
-        <span className="label" dangerouslySetInnerHTML={fossilDescriptionHtml}></span>
-      </button>   
+    const buttonStyle = {
+      backgroundImage: 'url(' + itemUrl +')',
+    };
+
+    return  <button 
+              className="fossilSelectorButton" 
+              disabled={!enabled} 
+              fossilSelected={checked} 
+              onClick={ (e) => this.handleFossilSelectorClicked(e, fossilId) } 
+              key={fossilId}
+              style = {buttonStyle}
+            >
+                <span 
+                  className="label" 
+                  dangerouslySetInnerHTML={fossilDescriptionHtml}
+                />
+            </button>
   }
 
   handleFossilSelectorClicked(e, fossilId) {
@@ -2100,60 +2165,12 @@ class TheoryCrafter extends React.Component {
         <div key="redoDiv"><NormalButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label={ this.getRedoLabel() } key="redo" /></div>,
         <div key="rerollDiv"><NormalButton onClick={ () => this.rerollAction() } enabled={ this.canRerollAction() } label={ this.getRerollLabel() } key="undo" /></div>,
         <div key="sortMods"><input type="checkbox" onChange={(e) => this.handleSortModsToggled(e)} checked={this.state.sortMods} /><span style={{color: 'white'}}>Sort Mods</span></div>,
-        <div className="yetAnotherContainer" key="yetAnotherContainer">
-        <div className="everythingContainer" key="everythingContainer">
-        <div className="itemAndModListContainer" key="itemAndModListContainer">
+        <div className="bottomPanel" key="bottomPanel">
           {[
-            <div className="craftedItemContainer" key="craftedItemContainer">
-              <div className="craftingButtonSection" key="craftingButtonSection">
-                <div className="craftingButtonLine" key="craftingButtonLine1">
-                { [
-                  this.RenderCraftingButton("transmute", "Transmutation", "Metadata/Items/Currency/CurrencyUpgradeToMagic"),
-                  this.RenderCraftingButton("aug", "Augmentation", "Metadata/Items/Currency/CurrencyAddModToMagic"),
-                  this.RenderCraftingButton("alt", "Alteration", "Metadata/Items/Currency/CurrencyRerollMagic"),
-                  this.RenderCraftingButton("regal", "Regal", "Metadata/Items/Currency/CurrencyUpgradeMagicToRare"),
-                  this.RenderCraftingButton("alch", "Alchemy", "Metadata/Items/Currency/CurrencyUpgradeToRare"),
-                  this.RenderCraftingButton("chaos", "Chaos", "Metadata/Items/Currency/CurrencyRerollRare"),
-                  this.RenderCraftingButton("exalt", "Exalted", "Metadata/Items/Currency/CurrencyAddModToRare"),
-                  this.RenderCraftingButtonManual(["fossil", ...this.state.selectedFossils].join(" "), "Fossil", "https://web.poecdn.com/image/Art/2DItems/Currency/Delve/Reroll2x2C.png", "Fossil", () => { this.toggleFossilSelector() })
-                ] }
-                </div>
-                <div className="craftingButtonLine" key="craftingButtonLine2">
-                { [
-                  this.RenderCraftingButton("scour", "Scour", "Metadata/Items/Currency/CurrencyConvertToNormal"),
-                  this.RenderCraftingButton("annul", "Annulment", "Metadata/Items/Currency/CurrencyRemoveMod"),
-                  this.RenderCraftingButton("bless", "Blessed", "Metadata/Items/Currency/CurrencyRerollImplicit"),
-                  this.RenderCraftingButton("divine", "Divine", "Metadata/Items/Currency/CurrencyModValues"),
-                  this.RenderCraftingButton("exalt_inf crusader", "Crusader Exalt", "Metadata/Items/AtlasExiles/AddModToRareCrusader"),
-                  this.RenderCraftingButton("exalt_inf hunter", "Hunter Exalt", "Metadata/Items/AtlasExiles/AddModToRareHunter"),
-                  this.RenderCraftingButton("exalt_inf redeemer", "Redeemer Exalt", "Metadata/Items/AtlasExiles/AddModToRareRedeemer"),
-                  this.RenderCraftingButton("exalt_inf warlord", "Warlord Exalt", "Metadata/Items/AtlasExiles/AddModToRareWarlord"),                      
-                ] }
-                </div>
-              </div>
-              <CraftedItem 
-                itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } 
-                context={this.theoryCrafterContext} 
-                sortMods={this.state.sortMods} 
-                key="craftedItem" 
-              />
-            </div>,
-            <div className="modListContainer" key="modListContainer">
-              <ModList 
-                expandedGroups={this.state.expandedGroups} 
-                onGroupClicked={(groupKey) => this.onGroupClicked(groupKey)} 
-                getActionInfoFunction={this.getActionInfoFunctionForModList()}
-                getActionInfoAdditionalParameters={this.getAdditionalActionParametersForModList()}
-                fossilTypes={this.state.selectedFossils} 
-                itemState={ this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState } 
-                context={this.theoryCrafterContext} 
-                key="modList"
-              />
-            </div>,
+            this.RenderCraftingPanel(),
+            this.RenderModListPanel(),
             this.RenderFossilPopup(this.state.fossilPopupShown)
           ]}
-        </div>
-        </div>
         </div>
     ]
   }
