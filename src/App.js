@@ -2004,12 +2004,13 @@ class TheoryCrafter extends React.Component {
   }
 
   RenderModListPanel() {
+    const selectedAction = this.getSelectedActionForModList();
     return <div className="modListContainer" key="modListContainer">
       <ModList
         expandedGroups={this.state.expandedGroups}
         onGroupClicked={(groupKey) => this.onGroupClicked(groupKey)}
-        getActionInfoFunction={this.getActionInfoFunctionForModList()}
-        getActionInfoAdditionalParameters={this.getAdditionalActionParametersForModList()}
+        getActionInfoFunction={this.getActionInfoFunctionForModList(selectedAction)}
+        getActionInfoAdditionalParameters={this.getAdditionalActionParametersForModList(selectedAction)}
         fossilTypes={this.state.selectedFossils}
         itemState={this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState}
         context={this.theoryCrafterContext}
@@ -2263,29 +2264,27 @@ class TheoryCrafter extends React.Component {
 
   getSelectedActionForModList() {
     let selectedAction = (this.state.popupActionForModList || this.state.selectedActionForModList);
+    if (!selectedAction || (!this.canPerformAction([selectedAction, ...this.getAdditionalActionParametersForModList(selectedAction)].join(" "), this.getState()))) {
+      const rarity = this.getState().rarity;
+      if (rarity === "normal") {
+        return "transmute";
+      }
+      if (rarity === "magic") {
+        return "regal";
+      }
+      if (rarity === "rare") {
+        return "exalt";
+      }
+      return "exalt";
+    }
     return selectedAction;
   }
 
-  getActionInfoFunctionForModList() {
-    let selectedAction = (this.state.popupActionForModList || this.state.selectedActionForModList);
-    if (selectedAction === "") {
-      const rarity = this.getState().rarity;
-      if (rarity === "normal") {
-        return this.getActionInfoMap["transmute"];
-      }
-      if (rarity === "magic") {
-        return this.getActionInfoMap["regal"];
-      }
-      if (rarity === "rare") {
-        return this.getActionInfoMap["exalt"];
-      }
-      return this.getActionInfoMap["exalt"];
-    }
+  getActionInfoFunctionForModList(selectedAction) {
     return this.getActionInfoMap[selectedAction];
   }
 
-  getAdditionalActionParametersForModList() {
-    let selectedAction = (this.state.popupActionForModList || this.state.selectedActionForModList);
+  getAdditionalActionParametersForModList(selectedAction) {
     if (selectedAction === "fossil") {
       return [...this.state.selectedFossils];
     }
