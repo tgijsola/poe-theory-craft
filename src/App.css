@@ -117,7 +117,7 @@ body {
   border-color: rgb(124, 124, 124);
 }
 
-.fossilSelectorButton[fossilSelected=true] {
+.fossilSelectorButton[fossilselected=true] {
   background-color: rgb(255, 235, 144);
 }
 
@@ -424,15 +424,6 @@ body {
   background-image: url('/poe-theory-craft/img/elder-symbol.png');
 }
 
-.modRoll .modRollLabelLine {
-  padding: 5px;
-}
-
-.modRollLabelLine .modRollLabel {
-  color: white;
-  margin: 0 auto;
-}
-
 .modList {
   width: 785;
   color: #eee;
@@ -444,6 +435,17 @@ body {
 }
 
 .modList .modGroup {
+}
+
+.modRollLabelLine {
+  background: #111;
+  padding: 5px;
+}
+
+.modRollLabelLine .modRollLabel {
+  position: relative;
+  margin-left: 85px;
+  margin-right: 120px;
 }
 
 .modGroup .modGroupLine {
@@ -583,5 +585,5 @@ body {
 }
 
 .bottomPanel .modListContainer {
-  margin-left: 450px;
+  margin-left: 460px;
 }

@@ -150,7 +150,7 @@ class CraftedItem extends React.Component {
   }
 
   render() {
-    return <div className={"craftedItem " + this.props.itemState.rarity}>
+    return <div className={"craftedItem " + this.props.itemState.rarity} key="craftedItem">
       <div className="content-box">
         <ItemHeader itemTypeName={this.getItemTypeName()} generatedName={this.props.itemState.generatedName} influences={this.props.itemState.influences} />
         <PropertyLine line="Item Level: {}" values={[this.props.itemState.level]} />
@@ -2000,7 +2000,7 @@ class TheoryCrafter extends React.Component {
 
   RenderFossilPopup(isShown) {
     if (isShown) {
-      return <div className="fossilPopup">
+      return <div className="fossilPopup" key="fossilPopup">
                 { this.state.fossilPopupShown ? <div className="modal" onClick={() => this.toggleFossilSelector()}></div> : [] }
                 <div className="fossilPopupContents">
                   <div className="fossilPopupLabelLine" key="fossilPopupLabelLine">
@@ -2074,7 +2074,7 @@ class TheoryCrafter extends React.Component {
     return  <button 
               className="fossilSelectorButton" 
               disabled={!enabled} 
-              fossilSelected={checked} 
+              fossilselected={checked} 
               onClick={ (e) => this.handleFossilSelectorClicked(e, fossilId) } 
               key={fossilId}
               style = {buttonStyle}
