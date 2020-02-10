@@ -1,10 +1,22 @@
 import React from 'react';
 import './App.css';
+
 import TranslationHelper from './Translation.js';
 import seedrandom from 'seedrandom';
 import RareItemNames from './RareItemnames.js';
 import ModGroups from './ModGroups.js';
+
 import 'balloon-css';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { 
+  faCaretRight, 
+  faCaretDown, 
+  faCog,
+  faSortAmountDown,
+  faUndo,
+  faRedo,
+  faDice,
+} from '@fortawesome/free-solid-svg-icons';
 
 import base_items from './data/base_items.json';
 import item_classes from './data/item_classes.json';
@@ -186,10 +198,11 @@ class ModListGroupLine extends React.Component {
     }
 
     const probClass = "modProb " + this.props.probabilityClass;
+    const dropDownArrow = this.props.collapsed ? faCaretRight : faCaretDown;
 
     return <div className="modGroupLine" onClick={this.props.onGroupClicked}>
       <div className="modTier" key="modTier">
-        { this.props.collapsed ? "▶" : "▼" }
+        <FontAwesomeIcon icon={dropDownArrow} />
       </div>
       <div className={tierClass} key="modTierContents">
         { this.props.tierContents }
@@ -1904,12 +1917,46 @@ class TheoryCrafter extends React.Component {
     return <button onClick={() => this.handleBaseSelectButtonClicked()} key="baseItemCreateButton">Create New Item</button>;
   }
 
+  RenderUtilityButtonPanel() {
+    return (
+      <div className="craftingButtonSection" key="craftingButtonSection">
+        <div className="craftingButtonLine" key="craftingButtonLine1">
+          <CraftingButton
+            itemTooltip={this.getUndoLabel()}
+            onClick={() => this.undoState()}
+            enabled={this.canUndoState()}
+            label={<FontAwesomeIcon size="2x" icon={faUndo} />}
+            key="undo"
+          />
+          <CraftingButton
+            itemTooltip="Toggled Sorted Mods"
+            label={<FontAwesomeIcon size="2x" icon={faSortAmountDown} />}
+            onClick={(e) => this.handleSortModsToggled(e)}
+            enabled={true}
+            selectedForModList={this.state.sortMods ? "true" : "false"}
+          />
+          <CraftingButton
+            itemTooltip={this.getRerollLabel()}
+            label={<FontAwesomeIcon size="2x" icon={faDice} />}
+            onClick={ () => this.rerollAction() }
+            enabled={this.canRerollAction()}
+          />
+          <CraftingButton
+            itemTooltip={this.getRedoLabel()}
+            label={<FontAwesomeIcon size="2x" icon={faRedo} />}
+            onClick={ () => this.redoState() }
+            enabled={this.canRedoState()}
+          />          
+         </div>
+      </div>
+    );
+  }
+
   RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction = null, dropdownEnabled = true) {
     const buttonOnClick = () => this.performAction(actionName, this.getState());
     const buttonOnRightClick = (e) => this.selectActionForModList(e, actionName);
     const actionSplit = actionName.split(' ');
     const selectedForModList = this.getSelectedActionForModList() === actionSplit[0];
-    console.log(selectedForModList + " this.getSelectedActionForModList() " + this.getSelectedActionForModList() + ", actionSplit[0] " + actionSplit[0]);
     const isEnabled = this.canPerformAction(actionName, this.getState());
     const showDropDown = dropdownAction !== null;
 
@@ -1930,7 +1977,7 @@ class TheoryCrafter extends React.Component {
           onClick={dropdownAction} 
           onRightClick={buttonOnRightClick}          
           enabled={dropdownEnabled}
-          label="&#9881;"
+          label={<FontAwesomeIcon icon={faCog} />}
           selectedForModList={selectedForModList ? "true" : "false"}
           key={actionName + "_dropdown"}
           right="true"
@@ -2251,7 +2298,7 @@ class TheoryCrafter extends React.Component {
   }
 
   handleSortModsToggled(e) {
-    this.setState( {...this.state, sortMods : e.target.checked} );
+    this.setState( {...this.state, sortMods : !this.state.sortMods} );
   }
 
   selectActionForModList(e, actionName) {
@@ -2340,10 +2387,14 @@ class TheoryCrafter extends React.Component {
             this.RenderBaseSelectButton(),
           ] }
         </div>,
-        <div key="undoDiv"><NormalButton onClick={ () => this.undoState() } enabled={ this.canUndoState() } label={ this.getUndoLabel() } key="undo" /></div>,
-        <div key="redoDiv"><NormalButton onClick={ () => this.redoState() } enabled={ this.canRedoState() } label={ this.getRedoLabel() } key="redo" /></div>,
-        <div key="rerollDiv"><NormalButton onClick={ () => this.rerollAction() } enabled={ this.canRerollAction() } label={ this.getRerollLabel() } key="undo" /></div>,
-        <div key="sortMods"><input type="checkbox" onChange={(e) => this.handleSortModsToggled(e)} checked={this.state.sortMods} /><span style={{color: 'white'}}>Sort Mods</span></div>,
+        <div className="topPanel" key="topPanel">
+          {[
+            this.RenderUtilityButtonPanel(),
+          ]}
+          <div className="infoSection" key="infoSection">
+            Poe Theory Craft 1.0
+          </div>
+        </div>,
         <div className="bottomPanel" key="bottomPanel">
           {[
             this.RenderCraftingPanel(),
