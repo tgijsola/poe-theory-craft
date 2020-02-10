@@ -1,25 +1,25 @@
 {
   "files": {
-    "main.css": "/poe-theory-craft/static/css/main.dd4ff559.chunk.css",
-    "main.js": "/poe-theory-craft/static/js/main.e6c95747.chunk.js",
-    "main.js.map": "/poe-theory-craft/static/js/main.e6c95747.chunk.js.map",
+    "main.css": "/poe-theory-craft/static/css/main.6ac39834.chunk.css",
+    "main.js": "/poe-theory-craft/static/js/main.4217c4a4.chunk.js",
+    "main.js.map": "/poe-theory-craft/static/js/main.4217c4a4.chunk.js.map",
     "runtime-main.js": "/poe-theory-craft/static/js/runtime-main.49a4fc52.js",
     "runtime-main.js.map": "/poe-theory-craft/static/js/runtime-main.49a4fc52.js.map",
     "static/css/2.36392fb5.chunk.css": "/poe-theory-craft/static/css/2.36392fb5.chunk.css",
-    "static/js/2.7af90a20.chunk.js": "/poe-theory-craft/static/js/2.7af90a20.chunk.js",
-    "static/js/2.7af90a20.chunk.js.map": "/poe-theory-craft/static/js/2.7af90a20.chunk.js.map",
+    "static/js/2.ce4bc61c.chunk.js": "/poe-theory-craft/static/js/2.ce4bc61c.chunk.js",
+    "static/js/2.ce4bc61c.chunk.js.map": "/poe-theory-craft/static/js/2.ce4bc61c.chunk.js.map",
     "index.html": "/poe-theory-craft/index.html",
-    "precache-manifest.be5603972f3477fd7e8389b3b63744b5.js": "/poe-theory-craft/precache-manifest.be5603972f3477fd7e8389b3b63744b5.js",
+    "precache-manifest.7f71d4265c00dc760e242297d8bab958.js": "/poe-theory-craft/precache-manifest.7f71d4265c00dc760e242297d8bab958.js",
     "service-worker.js": "/poe-theory-craft/service-worker.js",
     "static/css/2.36392fb5.chunk.css.map": "/poe-theory-craft/static/css/2.36392fb5.chunk.css.map",
-    "static/css/main.dd4ff559.chunk.css.map": "/poe-theory-craft/static/css/main.dd4ff559.chunk.css.map",
-    "static/js/2.7af90a20.chunk.js.LICENSE": "/poe-theory-craft/static/js/2.7af90a20.chunk.js.LICENSE"
+    "static/css/main.6ac39834.chunk.css.map": "/poe-theory-craft/static/css/main.6ac39834.chunk.css.map",
+    "static/js/2.ce4bc61c.chunk.js.LICENSE": "/poe-theory-craft/static/js/2.ce4bc61c.chunk.js.LICENSE"
   },
   "entrypoints": [
     "static/js/runtime-main.49a4fc52.js",
     "static/css/2.36392fb5.chunk.css",
-    "static/js/2.7af90a20.chunk.js",
-    "static/css/main.dd4ff559.chunk.css",
-    "static/js/main.e6c95747.chunk.js"
+    "static/js/2.ce4bc61c.chunk.js",
+    "static/css/main.6ac39834.chunk.css",
+    "static/js/main.4217c4a4.chunk.js"
   ]
 }
