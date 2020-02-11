@@ -249,6 +249,95 @@ body {
   text-shadow: 1px 1px #444;  
 }
 
+.selectorPopupContainer.newBase {
+  width: 1280px;
+  height: 700px;
+  background: #222;  
+}
+
+.newBaseItemList .selectorPopupButton .label {
+  text-shadow: none;
+}
+
+.newBaseItemListContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.newBaseItemList {
+  overflow: auto;
+  flex: 0 0 auto;
+  height: 550px;
+}
+
+.newBaseItemPropertiesContainer {
+  width: 420px;
+  margin: auto;
+}
+
+.newBaseItemPreviewContainer {
+  width: 420px;
+  margin: auto;
+}
+
+.influenceSelectorLabel {
+  text-align: center;
+  color: whitesmoke;
+  font-family: 'FontinSmallCaps';
+  font-size: 18px;    
+  margin: 10px;  
+}
+
+.influenceSelectorButton {
+  width: 150px;
+  height: 60px;
+  flex: 0 1 auto;
+}
+
+.influenceSelectorButtonContainer { 
+  display: flex;
+  justify-content: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.influenceSelectorLevelContainer {
+  margin: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  flex-direction: row;
+  flex-wrap: nowrap;
+}
+
+.influenceSelectorLevelContainer .label {
+  color: whitesmoke;
+  font-family: 'FontinSmallCaps';
+  font-size: 18px;    
+  margin: 3px;
+}
+
+.influenceSelectorLevelContainer input {
+  width: 40px;
+  height: 30px;
+  font-family: 'FontinSmallCaps';
+  font-size: 18px;
+  text-align: center;
+}
+
+.influenceSelectorCreateItemContainer {
+  width: 100%;
+}
+
+.influenceSelectorCreateItemContainer button {
+  margin: 50px auto;  
+}
+
+.influenceSelectorCreateItemContainer button .label {
+  font-family: 'FontinSmallCaps';
+  font-size: 24px;    
+}
+
 .button {
   background-color: wheat;
 }
@@ -526,6 +615,10 @@ body {
 }
 .craftedItem .symbol.elder::after {
   background-image: url('/poe-theory-craft/img/elder-symbol.png');
+}
+
+.craftedItemImage {
+  margin: 10px;
 }
 
 .modList {

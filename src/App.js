@@ -4,7 +4,9 @@ import './App.css';
 import TranslationHelper from './Translation.js';
 import seedrandom from 'seedrandom';
 import RareItemNames from './RareItemnames.js';
-import ModGroups from './ModGroups.js';
+import ModGroups from './ModLookupTables.js';
+import ItemLookupTables from './ItemLookupTables.js';
+import { FixedSizeList as List } from 'react-window';
 
 import 'balloon-css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -16,6 +18,9 @@ import {
   faUndo,
   faRedo,
   faDice,
+  faFile,
+  faCertificate,
+  faSearch,
 } from '@fortawesome/free-solid-svg-icons';
 
 import base_items from './data/base_items.json';
@@ -24,8 +29,16 @@ import fossils from './data/fossils.json';
 import _mods from './data/mods.json';
 import mod_types from './data/mod_types.json';
 import stat_translations from './data/stat_translations.json';
-import stats from './data/stats.json'
-import essences from './data/essences.json'
+import stats from './data/stats.json';
+import essences from './data/essences.json';
+
+function importAll(r) {
+  let images = {};
+  r.keys().map((item, index) => { images[item.replace('./', '')] = r(item); });
+  return images;
+}
+
+const BenchImages = importAll(require.context('./img/bench/', false, /\.(png|jpe?g|svg)$/));
 
 function randRange(rng, minInclusive, maxInclusive) {
   return Math.floor(rng.quick() * (maxInclusive - minInclusive + 1)) + minInclusive;
@@ -161,12 +174,24 @@ class CraftedItem extends React.Component {
     return separatedGroups;
   }
 
+  getItemImageUrl() {
+    const item = base_items[this.props.itemState.baseItemId];
+    let itemImageLocation = item.visual_identity.dds_file;
+    const extensionIdx = itemImageLocation.lastIndexOf('.');
+    if (extensionIdx >= 0) {
+      itemImageLocation = itemImageLocation.slice(0, extensionIdx);
+    }
+
+    return "https://web.poecdn.com/image/" + itemImageLocation + ".png?scale=1&w=0&h=0";
+  }
+
   render() {
     return <div className={"craftedItem " + this.props.itemState.rarity} key="craftedItem">
       <div className="content-box">
         <ItemHeader itemTypeName={this.getItemTypeName()} generatedName={this.props.itemState.generatedName} influences={this.props.itemState.influences} />
         <PropertyLine line="Item Level: {}" values={[this.props.itemState.level]} />
         { this.getGroupsWithSeparators([this.getEnchantmentBoxes(), this.getImplicitBoxes(), this.getAffixBoxes()]) }
+        <img className="craftedItemImage" src={this.getItemImageUrl()}></img>
       </div>
     </div>
   }
@@ -1694,6 +1719,7 @@ class TheoryCrafterContext {
   constructor(modDatabase, rng) {
     this.mods = modDatabase;
     this.modLookupTables = ModGroups.ParseModGroups(modDatabase, stats, item_classes, mod_types);
+    this.itemLookupTables = ItemLookupTables.ParseBaseItems(base_items);
     this.rng = rng;
   }
 }
@@ -1767,10 +1793,18 @@ class TheoryCrafter extends React.Component {
       selectedActionForModList : "",
       popupActionForModList : "",
       expandedGroups : new Set(),
+      
+      newBaseSelectorShown : false,
+      newBaseItemLevel : 100,
+      newBaseSelectedInfluences : [],
+      newBaseFilter : "",
+      newBaseCurrentSelection : this.theoryCrafterContext.itemLookupTables.getValidBaseTypes()[0], 
+      newBaseRequiredTag : "",
+      newBaseAllowedStats : { dex: 1, int: 1, str: 1},
 
       fossilPopupShown : false,
       selectedFossils : [],
-
+      
       influencedExaltPopupShown : false,
       selectedInfluenceExalt : "crusader",
     };
@@ -1922,12 +1956,15 @@ class TheoryCrafter extends React.Component {
       <div className="craftingButtonSection" key="craftingButtonSection">
         <div className="craftingButtonLine" key="craftingButtonLine1">
           <CraftingButton
-            itemTooltip={this.getUndoLabel()}
-            onClick={() => this.undoState()}
-            enabled={this.canUndoState()}
-            label={<FontAwesomeIcon size="2x" icon={faUndo} />}
-            key="undo"
+            itemTooltip="New Base"
+            onClick={() => this.toggleNewBaseSelector()}
+            enabled={true}
+            label={<FontAwesomeIcon size="2x" icon={faFile} />}
+            key="newBase"
           />
+          <div>
+            &nbsp;
+          </div>          
           <CraftingButton
             itemTooltip="Toggled Sorted Mods"
             label={<FontAwesomeIcon size="2x" icon={faSortAmountDown} />}
@@ -1935,19 +1972,29 @@ class TheoryCrafter extends React.Component {
             enabled={true}
             selectedForModList={this.state.sortMods ? "true" : "false"}
           />
+          <div>
+            &nbsp;
+          </div>
+          <CraftingButton
+            itemTooltip={this.getUndoLabel()}
+            onClick={() => this.undoState()}
+            enabled={this.canUndoState()}
+            label={<FontAwesomeIcon size="2x" icon={faUndo} />}
+            key="undo"
+          />          
           <CraftingButton
             itemTooltip={this.getRerollLabel()}
             label={<FontAwesomeIcon size="2x" icon={faDice} />}
-            onClick={ () => this.rerollAction() }
+            onClick={() => this.rerollAction()}
             enabled={this.canRerollAction()}
           />
           <CraftingButton
             itemTooltip={this.getRedoLabel()}
             label={<FontAwesomeIcon size="2x" icon={faRedo} />}
-            onClick={ () => this.redoState() }
+            onClick={() => this.redoState()}
             enabled={this.canRedoState()}
-          />          
-         </div>
+          />
+        </div>
       </div>
     );
   }
@@ -2045,7 +2092,6 @@ class TheoryCrafter extends React.Component {
         itemState={this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState}
         context={this.theoryCrafterContext}
         sortMods={this.state.sortMods}
-        key="craftedItem"
       />
     </div>
   }
@@ -2133,6 +2179,297 @@ class TheoryCrafter extends React.Component {
     }
   }
 
+  GetAllowedBasesForNewBasePopup() {
+    let allowedBases = [];
+
+    let validBaseTypes = [];
+    if (this.state.newBaseRequiredTag) {
+      validBaseTypes = this.theoryCrafterContext.itemLookupTables.getValidBaseTypesForItemGroup(this.state.newBaseRequiredTag);
+    }
+    else {
+      validBaseTypes = this.theoryCrafterContext.itemLookupTables.getValidBaseTypes();
+    }
+
+    for (const itemId of validBaseTypes) {
+      const item = base_items[itemId];
+
+      if (item.requirements) {
+        if (!this.state.newBaseAllowedStats.dex && ("dexterity" in item.requirements) && (item.requirements.dexterity > 0)) {
+          continue;
+        }
+        if (!this.state.newBaseAllowedStats.int && ("intelligence" in item.requirements) && (item.requirements.intelligence > 0)) {
+          continue;
+        }
+        if (!this.state.newBaseAllowedStats.str && ("strength" in item.requirements) && (item.requirements.strength > 0)) {
+          continue;
+        }
+      }
+
+      if (this.state.newBaseRequiredTag) {
+        if (!(item.tags.includes(this.state.newBaseRequiredTag))) {
+          continue;
+        }
+      }
+
+      if (this.state.newBaseFilter) {
+        const searchStrings = this.state.newBaseFilter.split(/\s+/);
+        let filterPassed = true;
+        for (const searchString of searchStrings) {
+          if (item.name.toLowerCase().indexOf(searchString) === -1
+          && item.item_class.toLowerCase().indexOf(searchString) === -1) {
+            filterPassed = false;
+            break;
+          }
+        }
+        if (!filterPassed) {
+          continue;
+        }
+      }
+      allowedBases.push(itemId);
+    }
+    return allowedBases;
+  }
+
+  RenderBaseItemEntry(props) {
+    const itemId = props.data[props.index];
+    const selected = itemId === this.state.newBaseCurrentSelection;
+    const baseItem = base_items[itemId];
+    const itemName = baseItem.name;
+    const itemLevel = baseItem.drop_level;
+    const itemClass = baseItem.item_class;
+    let itemReqIcons = [];
+    if (baseItem.requirements) {
+      const requirements = baseItem.requirements;
+      if ((requirements.dexterity) && requirements.dexterity > 0) {
+        itemReqIcons.push(<FontAwesomeIcon icon={faCertificate} color="#608600" key="dex"/>);
+      }
+      if ((requirements.intelligence) && requirements.intelligence > 0) {
+        itemReqIcons.push(<FontAwesomeIcon icon={faCertificate} color="#5A78F4" key="int"/>);
+      }
+      if ((requirements.strength) && requirements.strength > 0) {
+        itemReqIcons.push(<FontAwesomeIcon icon={faCertificate} color="#DE3852" key="str"/>);
+      }
+    }
+
+    return  <button 
+              className="selectorPopupButton" 
+              itemselected={selected ? "true" : "false"} 
+              onClick={ (e) => this.handleNewBaseSelected(e, itemId) } 
+              key={itemId}
+              style = {props.style}
+            >
+                <span className="label">
+                  {itemReqIcons}
+                  &nbsp;
+                  {itemName}
+                  <br />
+                  {itemClass + " [" + itemLevel + "]"}
+                </span>
+            </button>        
+  }
+
+  RenderNewBaseInfluenceSelector(influenceId, label) {
+    const enabled = GetInfluenceTag(this.state.newBaseCurrentSelection, influenceId) != null;
+    const selected = enabled && this.state.newBaseSelectedInfluences.includes(influenceId);
+    return  <button 
+              className="selectorPopupButton influenceSelectorButton" 
+              disabled={!enabled}
+              itemselected={selected ? "true" : "false"} 
+              onClick={ (e) => this.handleNewBaseInfluenceSelectorClicked(e, influenceId) } 
+              key={influenceId}
+            >
+                <span className="label">{label}</span>
+            </button>    
+  }
+
+  handleNewBaseInfluenceSelectorClicked(e, influenceId) {
+    e.stopPropagation();
+    let newSelectedInfluences = [...this.state.newBaseSelectedInfluences];
+    if (newSelectedInfluences.includes(influenceId)) {
+      newSelectedInfluences = newSelectedInfluences.filter((x) => {return x !== influenceId});
+    }
+    else {
+      newSelectedInfluences.push(influenceId);
+    }
+    this.setState({...this.state, newBaseSelectedInfluences : newSelectedInfluences});
+  }
+
+  RenderNewBaseLevelSelector() {
+    return [
+      <span className="label" key="label">
+        Item Level: 
+      </span>,
+      <input key="input" value={this.state.newBaseItemLevel} onChange={(e) => {this.onNewBaseItemLevelChanged(e)}}/>
+    ];
+  }
+
+  onNewBaseItemLevelChanged(e) {
+    let newValue = parseInt(e.target.value);
+    if (isNaN(newValue)) {
+      newValue = 1;
+    }
+
+    this.setState({...this.state, newBaseItemLevel : newValue});
+  }
+
+  RenderNewBaseCreateItemButton() {
+    return  <button 
+              className="selectorPopupButton createItemButton" 
+              disabled={false}
+              itemselected={"true"} 
+              onClick={ (e) => this.handleNewBaseCreateItemButtonClicked(e) } 
+              key="createItemButton"
+            >
+                <span className="label">Create Item</span>
+            </button>        
+  }
+
+  handleNewBaseCreateItemButtonClicked(e) {
+    e.stopPropagation();
+
+    const item = base_items[this.state.newBaseCurrentSelection];
+    let minLevel = 1;    
+    if (item.drop_level) {
+      minLevel = item.drop_level;
+    }
+    let itemLevel = this.state.newBaseItemLevel;
+    if (itemLevel < minLevel) {
+      itemLevel = minLevel;
+    }
+    else if (itemLevel > 100) {
+      itemLevel = 100;
+    }    
+
+    let normalItemState = CreateItem(this.state.newBaseCurrentSelection, itemLevel, this.theoryCrafterContext);
+    for (const influenceId of this.state.newBaseSelectedInfluences) {
+      if (GetInfluenceTag(this.state.newBaseCurrentSelection, influenceId)) {
+        [, normalItemState] = AddInfluenceToItem(normalItemState, influenceId);
+      }
+    }
+
+    this.setState({ ...this.initState(normalItemState), sortMods: this.state.sortMods });    
+  }
+
+  RenderNewBasePropertiesPanel() {
+    return [
+      <div className="influenceSelectorLabel" key="influenceSelectorLabel">
+        Select Influence(s):
+      </div>,
+      <div className="influenceSelectorButtonContainer" key="influenceSelectorButtonContainer">
+        {[
+        this.RenderNewBaseInfluenceSelector("shaper", "Shaper"),
+        this.RenderNewBaseInfluenceSelector("elder", "Elder"),
+        this.RenderNewBaseInfluenceSelector("crusader", "Crusader"),
+        this.RenderNewBaseInfluenceSelector("hunter", "Hunter"),
+        this.RenderNewBaseInfluenceSelector("redeemer", "Redeemer"),
+        this.RenderNewBaseInfluenceSelector("warlord", "Warlord"),
+        ]}
+      </div>,
+      <div className="influenceSelectorLevelContainer" key="influenceSelectorLevelContainer">
+        {
+        this.RenderNewBaseLevelSelector()
+        }
+      </div>,
+      <div className="influenceSelectorCreateItemContainer" key="influenceSelectorCreateItemContainer">
+        {
+        this.RenderNewBaseCreateItemButton()
+        }
+      </div>
+    ];
+  }
+
+  RenderNewBasePopup(isShown) {
+    if (isShown) {
+      const bases = this.GetAllowedBasesForNewBasePopup();
+
+      const item = base_items[this.state.newBaseCurrentSelection];
+      let minLevel = 1;    
+      if (item.drop_level) {
+        minLevel = item.drop_level;
+      }
+      let itemLevel = this.state.newBaseItemLevel;
+      if (itemLevel < minLevel) {
+        itemLevel = minLevel;
+      }
+      else if (itemLevel > 100) {
+        itemLevel = 100;
+      }
+  
+      let newItem = CreateItem(this.state.newBaseCurrentSelection, itemLevel, this.theoryCrafterContext);
+      for (const influenceId of this.state.newBaseSelectedInfluences) {
+        [,newItem] = AddInfluenceToItem(newItem, influenceId);
+      }
+  
+      return <div className="selectorPopup newBase" key="newBasePopup">
+                <div className="modal" onClick={() => this.toggleNewBaseSelector()}></div>
+                <div className="selectorPopupContents">
+                  <div className="selectorPopupLabelLine" key="selectorPopupLabelLine">
+                  <div className="selectorPopupLabelLine">Select New Base</div>
+                  <div className="selectorPopupClose" onClick={() => this.toggleNewBaseSelector()}>✖</div>
+                </div>
+                <div className="selectorPopupContainer newBase" width="1280px">
+                  <div className="newBaseItemListContainer">
+                    <div className="filterButtonsTop">
+                      {[
+                        this.RenderNewBaseItemTagToggle("", "all"),
+                        this.RenderNewBaseItemTagToggle("one_hand_weapon", "one-hand"),
+                        this.RenderNewBaseItemTagToggle("two_hand_weapon", "two-hand"),
+                        this.RenderNewBaseItemTagToggle("wand", "one-hand-ranged"),
+                        this.RenderNewBaseItemTagToggle("bow", "two-hand-ranged"),
+                        this.RenderNewBaseItemTagToggle("shield", "shield"),
+                        this.RenderNewBaseItemTagToggle("helmet", "helmet"),
+                        this.RenderNewBaseItemTagToggle("body_armour", "chest"),
+                        this.RenderNewBaseItemTagToggle("gloves", "gloves"),
+                        this.RenderNewBaseItemTagToggle("boots", "boots"),
+                      ]}
+                    </div>
+                    <div className="filterButtonsBottom">
+                      {[
+                        this.RenderNewBaseItemTagToggle("ring", "ring"),
+                        this.RenderNewBaseItemTagToggle("amulet", "amulet"),
+                        this.RenderNewBaseItemTagToggle("belt", "belt"),
+                        this.RenderNewBaseItemTagToggle("flask", "flask"),
+                        this.RenderNewBaseItemTagToggle("quiver", "quiver"),
+                        this.RenderNewBaseItemTagToggle("jewel", "jewel"),
+                        this.RenderNewBaseItemTagToggle("abyss_jewel", "abyss-jewel"),
+                        this.RenderNewBaseItemColorToggle("dex", "socket-green"),
+                        this.RenderNewBaseItemColorToggle("int", "socket-blue"),
+                        this.RenderNewBaseItemColorToggle("str", "socket-red"),
+                      ]}
+                    </div>
+                    <div className="newBaseItemList">
+                      {
+                        <List height={550} itemCount={bases.length} width={420} itemSize={48} itemData={bases}>
+                          { (props) => this.RenderBaseItemEntry(props) }
+                        </List>
+                      }
+                    </div>
+                    <div className="newBaseItemFilter" height="50px">
+                      <input onInput={(e) => {this.onNewBaseItemFilterChanged(e)}}></input>
+                      <FontAwesomeIcon icon={faSearch} color="white" />
+                    </div>
+                  </div>
+                  <div className="newBaseItemPropertiesContainer">
+                    {
+                      this.RenderNewBasePropertiesPanel()
+                    }
+                  </div>
+                  <div className="newBaseItemPreviewContainer">
+                    <CraftedItem
+                        itemState={newItem}
+                        context={this.theoryCrafterContext}
+                        sortMods={true}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>;
+    }
+    else {
+      return [];
+    }
+  }
+
   RenderInfluencedExaltSelector(itemId, influenceType) {
     const enabled = CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, influenceType);
     const checked = (enabled && this.state.selectedInfluenceExalt === influenceType) ? "true" : null;
@@ -2173,6 +2510,39 @@ class TheoryCrafter extends React.Component {
                   dangerouslySetInnerHTML={itemDescriptionHtml}
                 />
             </button>
+  }
+
+  RenderNewBaseItemTagToggle(tagName, imageBase) {
+    const selected = this.state.newBaseRequiredTag === tagName;
+    const imageName = selected ? (imageBase + "-active.png") : (imageBase + ".png");
+    return <img key={tagName} src={BenchImages[imageName]} onClick={(e) => this.onNewBaseItemTagClicked(e, tagName)} />;
+  }
+
+  onNewBaseItemTagClicked(e, tagName) {
+    e.stopPropagation();
+    this.setState({...this.state, newBaseRequiredTag : tagName});
+  }
+
+  RenderNewBaseItemColorToggle(statName, imageBase) {
+    const selected = this.state.newBaseAllowedStats[statName] === 1;
+    const imageName = selected ? (imageBase + "-active.png") : (imageBase + ".png");
+    return <img width="43px" key={statName} src={BenchImages[imageName]} onClick={(e) => this.onNewBaseItemColorClicked(e, statName)} />;
+  }
+
+  onNewBaseItemColorClicked(e, statName) {
+    e.stopPropagation();
+    const newBaseAllowedStats = {...this.state.newBaseAllowedStats};
+    newBaseAllowedStats[statName] = newBaseAllowedStats[statName] === 1 ? 0 : 1;
+    this.setState({...this.state, newBaseAllowedStats : newBaseAllowedStats});
+  }
+
+  onNewBaseItemFilterChanged(e) {
+    this.setState({...this.state, newBaseFilter : e.target.value});
+  }
+
+  handleNewBaseSelected(e, itemId) {
+    e.stopPropagation();
+    this.setState({...this.state, newBaseCurrentSelection: itemId});
   }
 
   handleInfluencedExaltSelectorClicked(e, influenceType) {
@@ -2287,7 +2657,6 @@ class TheoryCrafter extends React.Component {
     else {
       newState = { ...this.state, selectedFossils : [...this.state.selectedFossils, fossilId] };
     }
-    // TODO: Delete this when user can manually select action for mod list
     if (newState.selectedFossils.length > 0 && CanFossilItem(this.getState(), this.theoryCrafterContext, ...newState.selectedFossils)) {
       newState.selectedActionForModList = "fossil";
     }
@@ -2354,6 +2723,10 @@ class TheoryCrafter extends React.Component {
     this.setState({ ...this.state, expandedGroups : newSet });
   }
 
+  toggleNewBaseSelector() {
+    this.setState({ ...this.state, newBaseSelectorShown : !this.state.newBaseSelectorShown});
+  }
+
   toggleInfluencedExaltSelector() {
     let newState = { ...this.state, influencedExaltPopupShown : !this.state.influencedExaltPopupShown };
     if (newState.influencedExaltPopupShown)
@@ -2400,7 +2773,8 @@ class TheoryCrafter extends React.Component {
             this.RenderCraftingPanel(),
             this.RenderModListPanel(),
             this.RenderFossilPopup(this.state.fossilPopupShown),
-            this.RenderInfluencedExaltPopup(this.state.influencedExaltPopupShown)
+            this.RenderInfluencedExaltPopup(this.state.influencedExaltPopupShown),
+            this.RenderNewBasePopup(this.state.newBaseSelectorShown),
           ]}
         </div>
     ]
