@@ -1787,8 +1787,6 @@ class TheoryCrafter extends React.Component {
       itemStateHistory : [ { itemState: initItemState, action : "" } ],
       itemStateHistoryIdx : 0,
       lastCommand : "",
-      selectedBaseId : initItemState.baseItemId,
-      selectedBaseLevel : initItemState.level,
       sortMods : false,
       selectedActionForModList : "",
       popupActionForModList : "",
@@ -1809,6 +1807,26 @@ class TheoryCrafter extends React.Component {
       selectedInfluenceExalt : "crusader",
     };
   }
+
+  initStateForNewBase(oldState, initItemState) {
+    return {
+      ...oldState,
+      
+      itemStateHistory : [ { itemState: initItemState, action : "" } ],
+      itemStateHistoryIdx : 0,
+      lastCommand : "",
+      selectedActionForModList : "",
+      popupActionForModList : "",
+      expandedGroups : new Set(),
+      
+      newBaseSelectorShown : false,
+      fossilPopupShown : false,
+      selectedFossils : [],
+      
+      influencedExaltPopupShown : false,
+    };
+  }
+
 
   pushState(newState, actionName) {
     return { ...this.state, itemStateHistory : [ ...this.state.itemStateHistory, { itemState: newState, action : actionName } ] };
@@ -1913,38 +1931,6 @@ class TheoryCrafter extends React.Component {
         this.setState(this.insertAndCutState(result[1], actionName));
       }
     }
-  }
-
-  handleSelectedBaseChanged(e) {
-    this.setState({ ...this.state, selectedBaseId : e.target.value });
-  }
-
-  RenderBaseSelectList() {
-    const baseItems = {}
-    for (const baseItemId in base_items) {
-      if (base_items[baseItemId]["release_state"] === "released") {
-        const domain = base_items[baseItemId]["domain"];
-        if (domain === "item" || domain === "flask" || domain === "abyss_jewel" || domain === "misc") {
-          baseItems[baseItemId] = baseItemId.slice(baseItemId.lastIndexOf('/') + 1);
-        }
-      }
-    }
-    return <select value={this.state.selectedBaseId} onChange={(x) => this.handleSelectedBaseChanged(x)} key="baseItemSelector">
-      { Object.keys(baseItems).map( (k) => <option value={k} key={k}>{baseItems[k]}</option> ) }
-    </select>;
-  }
-
-  handleSelectedBaseLevelChanged(e) {
-    this.setState({ ...this.state, selectedBaseLevel : e.target.value });
-  }
-
-  RenderBaseSelectLevel() {
-    return <input value={this.state.selectedBaseLevel} onChange={(x) => this.handleSelectedBaseLevelChanged(x)} key="baseItemLevelInput"/>;
-  }
-
-  handleBaseSelectButtonClicked() {
-    const normalItemState = CreateItem(this.state.selectedBaseId, this.state.selectedBaseLevel, this.theoryCrafterContext);
-    this.setState({ ...this.initState(normalItemState), sortMods: this.state.sortMods });
   }
 
   RenderBaseSelectButton() {
@@ -2065,6 +2051,7 @@ class TheoryCrafter extends React.Component {
 
   RenderCraftingPanel() {
     return <div className="craftedItemContainer" key="craftedItemContainer">
+      { this.RenderUtilityButtonPanel() }  
       <div className="craftingButtonSection" key="craftingButtonSection">
         <div className="craftingButtonLine" key="craftingButtonLine1">
           {[
@@ -2347,7 +2334,7 @@ class TheoryCrafter extends React.Component {
       }
     }
 
-    this.setState({ ...this.initState(normalItemState), sortMods: this.state.sortMods });    
+    this.setState({ ...this.initStateForNewBase(this.state, normalItemState) });    
   }
 
   RenderNewBasePropertiesPanel() {
@@ -2753,19 +2740,12 @@ class TheoryCrafter extends React.Component {
 
   render() {
     return [
-        <div key="baseSelection">
-          { [
-            this.RenderBaseSelectList(),
-            this.RenderBaseSelectLevel(),
-            this.RenderBaseSelectButton(),
-          ] }
-        </div>,
         <div className="topPanel" key="topPanel">
-          {[
-            this.RenderUtilityButtonPanel(),
-          ]}
-          <div className="infoSection" key="infoSection">
-            Poe Theory Craft 1.0
+          <div className="info top">
+            Path of Exile Theory Crafter
+          </div>
+          <div className="info bottom">
+            v0.1 - by @jsola
           </div>
         </div>,
         <div className="bottomPanel" key="bottomPanel">
