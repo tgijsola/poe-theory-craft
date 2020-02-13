@@ -2202,9 +2202,20 @@ class TheoryCrafter extends React.Component {
         break;
       }
     }
-    const essence = essences[this.state.selectedEssence];
+    let selectedEssenceId = null;
+    if (this.state.selectedEssence) {
+      const essence = essences[this.state.selectedEssence];
+      if (essence) {
+        selectedEssenceId = this.state.selectedEssence;
+      }
+    }
+    if (!selectedEssenceId) {
+      const firstGroup = this.theoryCrafterContext.essenceLookupTables.getSortedEssenceGroupIds()[0];
+      selectedEssenceId = this.theoryCrafterContext.essenceLookupTables.getGroupByGroupId(firstGroup).essenceIds[0];
+    }
 
-    return this.RenderCraftingButton("essence " + this.state.selectedEssence, essence.name, this.state.selectedEssence, () => { this.toggleEssenceSelector() }, dropdownEnabled);
+    const selectedEssence = essences[selectedEssenceId];
+    return this.RenderCraftingButton("essence " + selectedEssenceId, selectedEssence, selectedEssenceId, () => { this.toggleEssenceSelector() }, dropdownEnabled);
   }
 
 
