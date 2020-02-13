@@ -255,6 +255,45 @@ body {
   background: #222;  
 }
 
+.selectorList {
+  color: whitesmoke;
+  font-family: 'FontinSmallCaps';
+  font-size: 18px;
+}
+
+.selectorListElement {
+}
+
+.selectorListElement[itemselected="true"] {
+  background-color: rgba(255, 235, 144, 0.329);  
+}
+
+.selectorList.essenceSelector {
+  width: 100%;
+}
+.selectorList.essenceSelector .selectorListElement {
+  display: flex;
+  flex-direction: row;
+  color: whitesmoke;
+  width: 100%;
+}
+
+.selectorList.essenceSelector .selectorListElement .expander {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  text-align: center;
+  margin: auto 0;
+}
+
+.selectorList.essenceSelector .selectorListElement .image img {
+  margin: auto 0;
+}
+
+.selectorList.essenceSelector .selectorListElement .label {
+  margin: auto 0;
+}
+
 .newBaseItemList .selectorPopupButton .label {
   text-shadow: none;
 }

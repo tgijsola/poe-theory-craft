@@ -6,8 +6,9 @@ import seedrandom from 'seedrandom';
 import RareItemNames from './RareItemnames.js';
 import ModGroups from './ModLookupTables.js';
 import ItemLookupTables from './ItemLookupTables.js';
-import { FixedSizeList as List } from 'react-window';
+import EssenceLookupTables from './EssenceLookupTables.js';
 
+import { FixedSizeList as List } from 'react-window';
 import 'balloon-css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { 
@@ -83,6 +84,20 @@ function ItemHeader (props) {
             <span className={"r symbol " + rightSymbolClass}></span>
           </div>
   ;
+}
+
+function GetItemImageUrl(itemId, scale = 1, w = 0, h = 0) {
+  const baseItem = base_items[itemId];
+  let itemArtSubPath = baseItem.visual_identity.dds_file;
+  if (!itemArtSubPath) {
+    return "";
+  }
+
+  const extensionIdx = itemArtSubPath.lastIndexOf('.');
+  if (extensionIdx >= 0) {
+    itemArtSubPath = itemArtSubPath.slice(0, extensionIdx);
+  }
+  return "https://web.poecdn.com/image/" + itemArtSubPath + ".png?scale=" + scale + "&w=" + w + "&h=" + h;
 }
 
 class CraftedItem extends React.Component {
@@ -174,24 +189,13 @@ class CraftedItem extends React.Component {
     return separatedGroups;
   }
 
-  getItemImageUrl() {
-    const item = base_items[this.props.itemState.baseItemId];
-    let itemImageLocation = item.visual_identity.dds_file;
-    const extensionIdx = itemImageLocation.lastIndexOf('.');
-    if (extensionIdx >= 0) {
-      itemImageLocation = itemImageLocation.slice(0, extensionIdx);
-    }
-
-    return "https://web.poecdn.com/image/" + itemImageLocation + ".png?scale=1&w=0&h=0";
-  }
-
   render() {
     return <div className={"craftedItem " + this.props.itemState.rarity} key="craftedItem">
       <div className="content-box">
         <ItemHeader itemTypeName={this.getItemTypeName()} generatedName={this.props.itemState.generatedName} influences={this.props.itemState.influences} />
         <PropertyLine line="Item Level: {}" values={[this.props.itemState.level]} />
         { this.getGroupsWithSeparators([this.getEnchantmentBoxes(), this.getImplicitBoxes(), this.getAffixBoxes()]) }
-        <img className="craftedItemImage" src={this.getItemImageUrl()}></img>
+        <img className="craftedItemImage" src={GetItemImageUrl(this.props.itemState.baseItemId, 1, 0, 0)}></img>
       </div>
     </div>
   }
@@ -409,7 +413,6 @@ class ModList extends React.Component {
             }
           </div>
         )
-        // modGroups.map((modAndWeightGroup) => <ModGroup groupSource={modAndWeightGroup.groupSource} groupName={modAndWeightGroup.groupName} onGroupClicked={this.props.onGroupClicked} modAndWeightGroup={modAndWeightGroup.modsAndWeights} groupKey={modAndWeightGroup.groupKey} totalWeight={modAndWeightGroup.totalWeight} itemState={this.props.itemState} context={this.props.context} collapsed={!this.props.expandedGroups.has(modAndWeightGroup.groupKey)} key={modAndWeightGroup.groupKey}/>)
       }
     </div>
   }
@@ -516,6 +519,7 @@ function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
   const ignoreRequiredLevel = ("ignoreRequiredLevel" in extendedParameters) ? extendedParameters.ignoreRequiredLevel : false;
   const addedMods = ("addedMods" in extendedParameters) ? extendedParameters.addedMods : null;
   const forcedModIds = ("forcedModIds" in extendedParameters) ? extendedParameters.forcedModIds : null;
+  const itemLevelOverride = ("itemLevelOverride" in extendedParameters) ? extendedParameters.itemLevelOverride : null;
 
   const hasPrefixSlots = ignoreAffixLimits || (GetPrefixLimitForRarity(itemState.baseItemId, rarity) > GetPrefixCount(itemState, context));
   const hasSuffixSlots = ignoreAffixLimits || (GetSuffixLimitForRarity(itemState.baseItemId, rarity) > GetSuffixCount(itemState, context));
@@ -540,6 +544,8 @@ function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
     }
   }
 
+  const itemLevel = itemLevelOverride ? itemLevelOverride : itemState.level;
+
   for (const modId of modIds) {
     const mod = context.mods[modId];
 
@@ -550,7 +556,7 @@ function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
     }
 
     if (!ignoreRequiredLevel) {
-      if (mod["required_level"] > itemState.level) {
+      if (mod["required_level"] > itemLevel) {
         continue;
       }
     }
@@ -1684,6 +1690,83 @@ function FossilItem(itemState, context) {
   return TryApplyAction(itemState, actionInfo, context);
 }
 
+function CanEssenceItem(itemState, context, essenceId) {
+  if (itemState.corrupted) {
+    return false;
+  }
+
+  const item = base_items[itemState.baseItemId];
+  const essence = essences[essenceId];
+  if (!(item.item_class in essence.mods)) {
+    return false;
+  }
+
+  const modToApply = essence.mods[item.item_class];
+  if (!modToApply) {
+    return false;
+  }
+
+  const itemLevelLimit = essence.item_level_restriction;
+
+  let mockItemState = cloneItemState(itemState);
+  mockItemState.affixes = [];
+  mockItemState.rarity = "rare";
+  const validMods = GetValidModsAndWeightsForItem(mockItemState, context, { forcedModIds : [modToApply], ignoreSpawnWeight : true, ignoreRequiredLevel : true });
+  if (validMods.length === 0) {
+    return false;
+  }
+
+  return true;
+}
+
+function GetEssenceActionInfo(itemState, context, essenceId) {
+  const essence = essences[essenceId];
+  const item = base_items[itemState.baseItemId];
+  const modToApply = essence.mods[item.item_class];
+  let itemLevelOverride = itemState.level;
+  if (essence.item_level_restriction) {
+    if (essence.item_level_restriction < itemLevelOverride) {
+      itemLevelOverride = essence.item_level_restriction;
+    }
+  }
+
+  return { ...ActionInfo,
+    setRarity : "rare",
+    clearAffixes : true,
+    generateNewName : true,
+    affixCountRule : AffixCountRule.RandomRareAffixCount,
+    rolls : [
+      { ...ModRollInfo, 
+        weightParameters : { 
+          forcedModIds : [modToApply], 
+          ignoreSpawnWeight : true, 
+          ignoreRequiredLevel : true,
+        }, 
+        modType : "affix", 
+        label : essence.name, 
+        forceWeights : 100
+      },
+      { ...ModRollInfo, 
+        weightParameters : {
+          itemLevelOverride : itemLevelOverride
+        },
+        modType : "affix", 
+        fillRemainingAffixRolls : true 
+      }
+    ],
+  };
+}
+
+function EssenceItem(itemState, context, essenceId) {
+  if (!CanEssenceItem(itemState, context, essenceId)) {
+    return [false, itemState];
+  }
+
+  const actionInfo = GetEssenceActionInfo(itemState, context, essenceId);
+  return TryApplyAction(itemState, actionInfo, context);
+}
+
+
 function NormalButton(props) {
   return <button className="button" onClick={props.onClick} disabled={!props.enabled}>{props.label}</button>;  
 }
@@ -1720,6 +1803,7 @@ class TheoryCrafterContext {
     this.mods = modDatabase;
     this.modLookupTables = ModGroups.ParseModGroups(modDatabase, stats, item_classes, mod_types);
     this.itemLookupTables = ItemLookupTables.ParseBaseItems(base_items);
+    this.essenceLookupTables = EssenceLookupTables.ParseEssences(essences);
     this.rng = rng;
   }
 }
@@ -1742,6 +1826,7 @@ class TheoryCrafter extends React.Component {
       "bless" : CanBlessedItem,
       "divine" : CanDivineItem,
       "fossil" : CanFossilItem,
+      "essence" : CanEssenceItem,
     }
 
     this.getActionInfoMap = {
@@ -1758,6 +1843,7 @@ class TheoryCrafter extends React.Component {
       "bless" : null,
       "divine" : null,
       "fossil" : GetFossilActionInfo,
+      "essence" : GetEssenceActionInfo,
     }
 
     this.actionMap = {
@@ -1774,6 +1860,7 @@ class TheoryCrafter extends React.Component {
       "bless" : BlessedItem,
       "divine" : DivineItem,
       "fossil" : FossilItem,
+      "essence" : EssenceItem,
     }
 
     this.theoryCrafterContext = new TheoryCrafterContext(_mods, seedrandom());
@@ -1783,7 +1870,7 @@ class TheoryCrafter extends React.Component {
   }
 
   initState(initItemState) {
-    return {
+    let initState = {
       itemStateHistory : [ { itemState: initItemState, action : "" } ],
       itemStateHistoryIdx : 0,
       lastCommand : "",
@@ -1805,11 +1892,17 @@ class TheoryCrafter extends React.Component {
       
       influencedExaltPopupShown : false,
       selectedInfluenceExalt : "crusader",
+
+      essencePopupShown : false,
+      selectedEssence : "",
+      expandedEssenceGroups : [],
     };
+    initState.selectedEssence = this.selectInitialEssenceForItem(initState.itemStateHistory[0].itemState);
+    return initState;
   }
 
   initStateForNewBase(oldState, initItemState) {
-    return {
+    let initState = {
       ...oldState,
       
       itemStateHistory : [ { itemState: initItemState, action : "" } ],
@@ -1825,8 +1918,22 @@ class TheoryCrafter extends React.Component {
       
       influencedExaltPopupShown : false,
     };
+    if (!this.state.selectedEssence || !CanEssenceItem(initState.itemStateHistory[0].itemState, this.theoryCrafterContext, this.state.selectedEssence)) {
+      initState.selectedEssence = this.selectInitialEssenceForItem(initState.itemStateHistory[0].itemState);
+    }
+    return initState;
   }
 
+  selectInitialEssenceForItem(itemState) {
+    for (const groupId of this.theoryCrafterContext.essenceLookupTables.getSortedEssenceGroupIds()) {
+      for (const essenceId of this.theoryCrafterContext.essenceLookupTables.getGroupByGroupId(groupId).essenceIds) {
+        if (CanEssenceItem(itemState, this.theoryCrafterContext, essenceId)) {
+          return essenceId;
+        }
+      }
+    }
+    return "";
+  }
 
   pushState(newState, actionName) {
     return { ...this.state, itemStateHistory : [ ...this.state.itemStateHistory, { itemState: newState, action : actionName } ] };
@@ -1939,7 +2046,7 @@ class TheoryCrafter extends React.Component {
 
   RenderUtilityButtonPanel() {
     return (
-      <div className="craftingButtonSection" key="craftingButtonSection">
+      <div className="craftingButtonSection" key="utilityButtonSection">
         <div className="craftingButtonLine" key="craftingButtonLine1">
           <CraftingButton
             itemTooltip="New Base"
@@ -2021,31 +2128,18 @@ class TheoryCrafter extends React.Component {
     return craftingButtons;
   }
 
-  RenderCraftingButton(actionName, label, currencyImage, dropdownAction = null, dropdownEnabled = true) {
+  RenderCraftingButton(actionName, label, currencyId, dropdownAction = null, dropdownEnabled = true) {
     const buttonOnClick = () => this.performAction(actionName, this.getState());
     const isEnabled = this.canPerformAction(actionName, this.getState());
 
-    const baseItem = base_items[currencyImage];
+    const baseItem = base_items[currencyId];
     if (!baseItem) {
-      console.log("No base item for " + currencyImage + " (label: " + label + ")");
+      console.log("No base item for " + currencyId + " (label: " + label + ")");
       return NormalButton({onClick : buttonOnClick, disabled: !isEnabled, label: label});
     }
   
-    let itemArtSubPath = baseItem.visual_identity.dds_file;
-    if (!itemArtSubPath) {
-      console.log("No item art for " + currencyImage + " (label: " + label + ")");
-      return NormalButton({onClick : buttonOnClick, disabled: !isEnabled, label: label});
-    }
-  
+    const itemUrl = GetItemImageUrl(currencyId);
     let itemTooltip = baseItem.name;
-  
-    const extensionIdx = itemArtSubPath.lastIndexOf('.');
-    if (extensionIdx >= 0) {
-      itemArtSubPath = itemArtSubPath.slice(0, extensionIdx);
-    }
-  
-    const itemUrl = "https://web.poecdn.com/image/" + itemArtSubPath + ".png";
-
     return this.RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction, dropdownEnabled);
   }
 
@@ -2071,6 +2165,7 @@ class TheoryCrafter extends React.Component {
             this.RenderCraftingButton("annul", "Annulment", "Metadata/Items/Currency/CurrencyRemoveMod"),
             this.RenderCraftingButton("bless", "Blessed", "Metadata/Items/Currency/CurrencyRerollImplicit"),
             this.RenderCraftingButton("divine", "Divine", "Metadata/Items/Currency/CurrencyModValues"),
+            this.RenderEssenceCraftingButton(),
             this.RenderFossilCraftingButton(),
           ]}
         </div>
@@ -2098,6 +2193,20 @@ class TheoryCrafter extends React.Component {
       />
     </div>    
   }
+
+  RenderEssenceCraftingButton() {
+    let dropdownEnabled = false;
+    for (const essenceId in essences) {
+      if (CanEssenceItem(this.getState(), this.theoryCrafterContext, essenceId)) {
+        dropdownEnabled = true;
+        break;
+      }
+    }
+    const essence = essences[this.state.selectedEssence];
+
+    return this.RenderCraftingButton("essence " + this.state.selectedEssence, essence.name, this.state.selectedEssence, () => { this.toggleEssenceSelector() }, dropdownEnabled);
+  }
+
 
   RenderFossilCraftingButton() {
     let dropdownEnabled = false;
@@ -2139,31 +2248,6 @@ class TheoryCrafter extends React.Component {
     }
 
     return this.RenderCraftingButton("exalt_inf " + this.state.selectedInfluenceExalt, itemName, itemId, () => { this.toggleInfluencedExaltSelector() }, dropdownEnabled);
-  }
-
-  RenderInfluencedExaltPopup(isShown) {
-    if (isShown) {
-      return <div className="selectorPopup" key="influencedExaltPopup">
-                <div className="modal" onClick={() => this.toggleInfluencedExaltSelector()}></div>
-                <div className="selectorPopupContents">
-                  <div className="selectorPopupLabelLine" key="selectorPopupLabelLine">
-                  <div className="selectorPopupLabelLine">Select Influence</div>
-                  <div className="selectorPopupClose" onClick={() => this.toggleInfluencedExaltSelector()}>✖</div>
-                </div>
-                <div className="selectorPopupContainer">
-                  { [
-                    this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareCrusader", "crusader"),
-                    this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareHunter", "hunter"),
-                    this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareRedeemer", "redeemer"),
-                    this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareWarlord", "warlord"),
-                  ] }
-                </div>
-              </div>
-            </div>;
-    }
-    else {
-      return [];
-    }
   }
 
   GetAllowedBasesForNewBasePopup() {
@@ -2457,48 +2541,6 @@ class TheoryCrafter extends React.Component {
     }
   }
 
-  RenderInfluencedExaltSelector(itemId, influenceType) {
-    const enabled = CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, influenceType);
-    const checked = (enabled && this.state.selectedInfluenceExalt === influenceType) ? "true" : null;
-    const item = base_items[itemId];
-    const itemName = item.name;
-    const itemDescription = item.properties.description;
-    let itemDescriptionSplit = ["<b>" + itemName + "</b>"];
-    itemDescriptionSplit = [...itemDescriptionSplit, itemDescription.split("\\r\\n")];
-
-    let itemDescriptionHtml = { __html: itemDescriptionSplit.join("<br />") };
-
-    let itemArtSubPath = item.visual_identity.dds_file;
-    if (!itemArtSubPath) {
-      itemArtSubPath = "Art/2DItems/Currency/Influence Exalts/CrusaderOrb";
-      console.log("No item art for " + itemId);
-    }
-    const extensionIdx = itemArtSubPath.lastIndexOf('.');
-    if (extensionIdx >= 0) {
-      itemArtSubPath = itemArtSubPath.slice(0, extensionIdx);
-    }
-  
-    const itemUrl = "'https://web.poecdn.com/image/" + itemArtSubPath + ".png'";
-
-    const buttonStyle = {
-      backgroundImage: 'url(' + itemUrl +')',
-    };
-
-    return  <button 
-              className="selectorPopupButton" 
-              disabled={!enabled} 
-              itemselected={checked} 
-              onClick={ (e) => this.handleInfluencedExaltSelectorClicked(e, influenceType) } 
-              key={itemId}
-              style={buttonStyle}
-            >
-                <span 
-                  className="label" 
-                  dangerouslySetInnerHTML={itemDescriptionHtml}
-                />
-            </button>
-  }
-
   RenderNewBaseItemTagToggle(tagName, imageBase) {
     const selected = this.state.newBaseRequiredTag === tagName;
     const imageName = selected ? (imageBase + "-active.png") : (imageBase + ".png");
@@ -2530,6 +2572,62 @@ class TheoryCrafter extends React.Component {
   handleNewBaseSelected(e, itemId) {
     e.stopPropagation();
     this.setState({...this.state, newBaseCurrentSelection: itemId});
+  }
+
+  RenderInfluencedExaltPopup(isShown) {
+    if (isShown) {
+      return <div className="selectorPopup" key="influencedExaltPopup">
+                <div className="modal" onClick={() => this.toggleInfluencedExaltSelector()}></div>
+                <div className="selectorPopupContents">
+                  <div className="selectorPopupLabelLine" key="selectorPopupLabelLine">
+                  <div className="selectorPopupLabelLine">Select Influence</div>
+                  <div className="selectorPopupClose" onClick={() => this.toggleInfluencedExaltSelector()}>✖</div>
+                </div>
+                <div className="selectorPopupContainer">
+                  { [
+                    this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareCrusader", "crusader"),
+                    this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareHunter", "hunter"),
+                    this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareRedeemer", "redeemer"),
+                    this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareWarlord", "warlord"),
+                  ] }
+                </div>
+              </div>
+            </div>;
+    }
+    else {
+      return [];
+    }
+  }
+
+  RenderInfluencedExaltSelector(itemId, influenceType) {
+    const enabled = CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, influenceType);
+    const checked = (enabled && this.state.selectedInfluenceExalt === influenceType) ? "true" : null;
+    const item = base_items[itemId];
+    const itemName = item.name;
+    const itemDescription = item.properties.description;
+    let itemDescriptionSplit = ["<b>" + itemName + "</b>"];
+    itemDescriptionSplit = [...itemDescriptionSplit, itemDescription.split("\\r\\n")];
+
+    let itemDescriptionHtml = { __html: itemDescriptionSplit.join("<br />") };
+
+    const itemUrl = GetItemImageUrl(itemId);
+    const buttonStyle = {
+      backgroundImage: 'url(' + itemUrl +')',
+    };
+
+    return  <button 
+              className="selectorPopupButton" 
+              disabled={!enabled} 
+              itemselected={checked} 
+              onClick={ (e) => this.handleInfluencedExaltSelectorClicked(e, influenceType) } 
+              key={itemId}
+              style={buttonStyle}
+            >
+                <span 
+                  className="label" 
+                  dangerouslySetInnerHTML={itemDescriptionHtml}
+                />
+            </button>
   }
 
   handleInfluencedExaltSelectorClicked(e, influenceType) {
@@ -2601,19 +2699,7 @@ class TheoryCrafter extends React.Component {
 
     let fossilDescriptionHtml = { __html: fossilDescriptionsSplit.join("<br />") };
 
-    const baseItem = base_items[fossilId];
-    let itemArtSubPath = baseItem.visual_identity.dds_file;
-    if (!itemArtSubPath) {
-      itemArtSubPath = "Art/2DItems/Currency/Delve/Reroll2x2C";
-      console.log("No item art for " + fossilId);
-    }
-    const extensionIdx = itemArtSubPath.lastIndexOf('.');
-    if (extensionIdx >= 0) {
-      itemArtSubPath = itemArtSubPath.slice(0, extensionIdx);
-    }
-  
-    const itemUrl = "https://web.poecdn.com/image/" + itemArtSubPath + ".png";
-
+    const itemUrl = GetItemImageUrl(fossilId);
     const buttonStyle = {
       backgroundImage: 'url(' + itemUrl +')',
     };
@@ -2651,6 +2737,122 @@ class TheoryCrafter extends React.Component {
       newState.selectedActionForModList = "";
     }
     this.setState(newState);
+  }
+
+  RenderEssencePopup(isShown) {
+    if (isShown) {
+      return <div className="selectorPopup" key="essencePopup">
+                <div className="modal" onClick={() => this.toggleEssenceSelector()}></div>
+                <div className="selectorPopupContents">
+                  <div className="selectorPopupLabelLine" key="selectorPopupLabelLine">
+                  <div className="selectorPopupLabelLine">Select Essence</div>
+                  <div className="selectorPopupClose" onClick={() => this.toggleEssenceSelector()}>✖</div>
+                </div>
+                <div className="selectorPopupContainer">
+                  {
+                    this.RenderEssenceSelectorList()
+                  }
+                </div>
+              </div>
+            </div>;
+    }
+    else {
+      return [];
+    }
+  }
+
+  RenderEssenceSelectorList() {
+    let essenceElements = [];
+    for (const groupId of this.theoryCrafterContext.essenceLookupTables.getSortedEssenceGroupIds()) {
+      const group = this.theoryCrafterContext.essenceLookupTables.getGroupByGroupId(groupId);
+      const groupExpanded = this.state.expandedEssenceGroups.includes(groupId);
+      const selectedInGroup = group.essenceIds.includes(this.state.selectedEssence);
+      
+      let firstInGroup = true;
+      for (let i = 0; i < group.essenceIds.length; ++i) {
+        const essenceId = group.essenceIds[i];
+        const selected = essenceId === this.state.selectedEssence;
+        if (CanEssenceItem(this.getState(), this.theoryCrafterContext, essenceId)) {
+          if (!groupExpanded && selectedInGroup) {
+            if (selected) {
+              essenceElements.push(this.RenderEssenceGroupSelector(essenceId, true, groupId, false));
+              break;
+            }
+          }
+          else {
+            if (firstInGroup) {
+              essenceElements.push(this.RenderEssenceGroupSelector(essenceId, selected, groupId, groupExpanded));
+              if (!groupExpanded) {
+                break;
+              }
+              firstInGroup = false;
+            }
+            else {
+              essenceElements.push(this.RenderEssenceSelector(essenceId, selected));
+            }
+          }
+        }
+      }
+    }
+    return <div className="selectorList essenceSelector">
+      { essenceElements }
+    </div>
+  }
+
+  RenderEssenceGroupSelector(essenceId, selected, groupId, groupExpanded) {
+    const essence = essences[essenceId];
+
+    return  <div className="selectorListElement groupHeader" itemselected={selected ? "true" : "false"} onClick={(e) => { this.handleEssenceSelected(e, essenceId) }} key={essenceId}>
+              <div className="expander">
+                <FontAwesomeIcon size="2x" icon={groupExpanded ? faCaretDown : faCaretRight} onClick={(e) => { this.handleEssenceGroupCollapseToggle(e, groupId) }}/>
+              </div>
+              <div className="image">
+                <img src={GetItemImageUrl(essenceId, 1, 1, 1)} />
+              </div>
+              <span className="label">{essence.name}</span>
+            </div>
+  }
+
+  RenderEssenceSelector(essenceId, selected) {
+    const essence = essences[essenceId];
+
+    return  <div className="selectorListElement" itemselected={selected ? "true" : "false"}  onClick={(e) => { this.handleEssenceSelected(e, essenceId) }} key={essenceId}>
+              <div></div>
+              <div className="image">
+                <img src={GetItemImageUrl(essenceId, 1, 1, 1)} />
+              </div>
+              <span className="label">{essence.name}</span>
+            </div>
+  }
+
+  handleEssenceSelected(e, essenceId) {
+    e.stopPropagation();
+    let newState = {...this.state, selectedEssence : essenceId};
+    if (essenceId && CanEssenceItem(this.getState(), this.theoryCrafterContext, essenceId)) {
+      newState.selectedActionForModList = "essence";
+    }
+    else {
+      newState.selectedActionForModList = "";
+    }
+    this.setState(newState);
+  }
+
+  handleEssenceGroupCollapseToggle(e, groupName) {
+    e.stopPropagation();
+    const idx = this.state.expandedEssenceGroups.findIndex((x) => { return x === groupName });
+    let newState = null;
+    if (idx >= 0) {
+      newState = { ...this.state };
+      newState.expandedEssenceGroups.splice(idx, 1);
+    }
+    else {
+      newState = { ...this.state, expandedEssenceGroups : [...this.state.expandedEssenceGroups, groupName] };
+    }
+    this.setState(newState);    
+  }
+
+  toggleEssenceSelector() {
+    this.setState({...this.state, essencePopupShown : !this.state.essencePopupShown});
   }
 
   handleSortModsToggled(e) {
@@ -2694,7 +2896,10 @@ class TheoryCrafter extends React.Component {
     if (selectedAction === "exalt_inf") {
       return [this.state.selectedInfluenceExalt];
     }
-    // TODO: Add essences here!
+    if (selectedAction === "essence") {
+      return [this.state.selectedEssence];
+    }
+    // TODO: Add crafting bench here!
     return [];
   }
 
@@ -2754,6 +2959,7 @@ class TheoryCrafter extends React.Component {
             this.RenderModListPanel(),
             this.RenderFossilPopup(this.state.fossilPopupShown),
             this.RenderInfluencedExaltPopup(this.state.influencedExaltPopupShown),
+            this.RenderEssencePopup(this.state.essencePopupShown),
             this.RenderNewBasePopup(this.state.newBaseSelectorShown),
           ]}
         </div>
