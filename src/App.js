@@ -361,7 +361,7 @@ class ModList extends React.Component {
   render() {
 
     const actionInfo = this.props.getActionInfoFunction(this.props.itemState, this.props.context, ...this.props.getActionInfoAdditionalParameters);
-    const modRollGroups = GetModRollGroupsForAction(this.props.itemState, actionInfo, this.props.context);
+    const modRollGroups = GetModRollGroupsAndWeightsForAction(this.props.itemState, actionInfo, this.props.context);
 
     let modRolls = [];
 
@@ -1002,7 +1002,7 @@ const ModRollInfo = {
   label : "Affix Pool",
 }
 
-function GetModRollGroupsForAction(itemState, actionInfo, context) {
+function GetModRollGroupsAndWeightsForAction(itemState, actionInfo, context) {
   let newItemState = cloneItemState(itemState);
   if (actionInfo.clearAffixes) {
     newItemState.affixes = [];
@@ -1025,7 +1025,15 @@ function GetModRollGroupsForAction(itemState, actionInfo, context) {
       for (let modAndWeight of modsAndWeights) {
         modAndWeight.weight = modRoll.forceWeights;
       }
-    }    
+    }
+    if (modRoll.rollSelectionChance === 1.0) {
+      if (modsAndWeights.length === 1) {
+        if (modsAndWeights[0].weight > 0) {
+          // For rolls with one guaranteed outcome, roll it and add to the current item state
+          [, newItemState] = RollOnModRolls(newItemState, [modRoll], 1, context);
+        }
+      }
+    }
     modRollGroups.push(modsAndWeights);
   }
   return modRollGroups;
