@@ -307,16 +307,32 @@ class ModGroup extends React.Component {
 
   render() {
     const groupWeight = this.props.modAndWeightGroup.reduce((total, value) => { return total + value.weight }, 0);
-    const groupName = this.props.groupName;
+    let minModId = null;
+    let maxModId = null;
     let minTier = 1000;
     let maxTier = 0;
     for (const modAndWeight of this.props.modAndWeightGroup) {
       const modId = modAndWeight.modId;
       const tierInfoForMod = GetTierForMod(this.props.itemState, modId, this.props.context);
       const tierForMod = tierInfoForMod[0];
-      minTier = Math.min(minTier, tierForMod + 1);
-      maxTier = Math.max(maxTier, tierForMod + 1);
+      if (tierForMod + 1 < minTier) {
+        minTier = tierForMod + 1;
+        minModId = modId;
+      }
+      if (tierForMod + 1 > maxTier) {
+        maxTier = tierForMod + 1;
+        maxModId = modId;
+      }
     }
+
+    let groupName = "";
+    if (minModId === maxModId) {
+      groupName = TranslationHelper.TranslateMod(stat_translations, this.props.context.mods[minModId]);
+    }
+    else {
+      groupName = TranslationHelper.TranslateModForGroup(stat_translations, this.props.context.mods[maxModId], this.props.context.mods[minModId]);
+    }
+    
     const modData = this.props.context.mods[this.props.modAndWeightGroup[0].modId];
     const tierContentsString = (minTier === maxTier) ?
       TranslationHelper.stringformat("{0}{1}", [modData["generation_type"].slice(0, 1), minTier])
@@ -341,7 +357,7 @@ class ModGroup extends React.Component {
     else {
       probabilityClass = "guaranteed";
     }
-    const elementList = [<ModListGroupLine tierContents={tierContentsString} collapsed={this.props.collapsed} onGroupClicked={() => this.props.onGroupClicked(this.props.groupKey)} lineClass="modGroupLine" context={this.props.context} nameLines={groupName} weight={groupWeight} probabilityClass={probabilityClass} prob={(probability).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={groupName} />];
+    const elementList = [<ModListGroupLine tierContents={tierContentsString} nameLines={groupName} collapsed={this.props.collapsed} onGroupClicked={() => this.props.onGroupClicked(this.props.groupKey)} lineClass="modGroupLine" context={this.props.context} weight={groupWeight} probabilityClass={probabilityClass} prob={(probability).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={groupName} />];
     if (!this.props.collapsed) {
       elementList.push(...this.renderModsInModGroup(this.props.modAndWeightGroup, this.props.totalWeight));
     }
@@ -377,7 +393,7 @@ class ModList extends React.Component {
         if (groupedTableKey !== currentGroupTableKey) {
           currentGroupIdx++;
           currentGroupTableKey = groupedTableKey;
-          const groupName = TranslationHelper.TranslateModForGroup(stat_translations, this.props.context.mods[modId]);
+          const groupName = TranslationHelper.TranslateMod(stat_translations, this.props.context.mods[modId]);
           const groupSource = this.props.context.modLookupTables.getSource(modId);
           modGroups.push({groupName: groupName, groupSource: groupSource, groupKey: modId + "|" + groupedTableKey, totalWeight: totalWeight, modsAndWeights: []});
         }
@@ -1547,7 +1563,7 @@ function CanFossilItem(itemState, context) {
 }
 
 function GetWeightParametersForFossils(fossilTypes) {
-  let addedMods = [];
+  let addedMods = new Set();
   let forcedModLists = [];
   let gildedFossilMods = [];
   let negativeTagMultipliers = {};
@@ -1558,7 +1574,9 @@ function GetWeightParametersForFossils(fossilTypes) {
 
   for (const fossilId of fossilTypes) {
     const fossil = fossils[fossilId];
-    addedMods = [ ...addedMods, ...fossil["added_mods"] ];
+    for (const addedMod of fossil["added_mods"]) {
+      addedMods.add(addedMod);
+    }
     for (const negativeWeightMod of fossil["negative_mod_weights"]) {
       const tag = negativeWeightMod["tag"];
       const weightMultiplier = negativeWeightMod["weight"] / 100.0;
@@ -1696,6 +1714,12 @@ function FossilItem(itemState, context) {
 
   const actionInfo = GetFossilActionInfo(...arguments);
   return TryApplyAction(itemState, actionInfo, context);
+}
+
+function GetEssenceModForItem(itemState, essenceId) {
+  const item = base_items[itemState.baseItemId];
+  const essence = essences[essenceId];
+  return essence.mods[item.item_class];
 }
 
 function CanEssenceItem(itemState, context, essenceId) {
@@ -2786,28 +2810,28 @@ class TheoryCrafter extends React.Component {
       const group = this.theoryCrafterContext.essenceLookupTables.getGroupByGroupId(groupId);
       const groupExpanded = this.state.expandedEssenceGroups.includes(groupId);
       const selectedInGroup = group.essenceIds.includes(this.state.selectedEssence);
-      
       let firstInGroup = true;
       for (let i = 0; i < group.essenceIds.length; ++i) {
         const essenceId = group.essenceIds[i];
         const selected = essenceId === this.state.selectedEssence;
         if (CanEssenceItem(this.getState(), this.theoryCrafterContext, essenceId)) {
+          const essenceModId = GetEssenceModForItem(this.getState(), essenceId);
           if (!groupExpanded && selectedInGroup) {
             if (selected) {
-              essenceElements.push(this.RenderEssenceGroupSelector(essenceId, true, groupId, false));
+              essenceElements.push(this.RenderEssenceGroupSelector(essenceId, essenceModId, true, groupId, false));
               break;
             }
           }
           else {
             if (firstInGroup) {
-              essenceElements.push(this.RenderEssenceGroupSelector(essenceId, selected, groupId, groupExpanded));
+              essenceElements.push(this.RenderEssenceGroupSelector(essenceId, essenceModId, selected, groupId, groupExpanded));
               if (!groupExpanded) {
                 break;
               }
               firstInGroup = false;
             }
             else {
-              essenceElements.push(this.RenderEssenceSelector(essenceId, selected));
+              essenceElements.push(this.RenderEssenceSelector(essenceId, essenceModId, selected));
             }
           }
         }
@@ -2818,8 +2842,9 @@ class TheoryCrafter extends React.Component {
     </div>
   }
 
-  RenderEssenceGroupSelector(essenceId, selected, groupId, groupExpanded) {
-    const essence = essences[essenceId];
+  RenderEssenceGroupSelector(essenceId, essenceModId, selected, groupId, groupExpanded) {
+    const essenceMod = _mods[essenceModId];
+    const modLines = TranslationHelper.TranslateMod(stat_translations, essenceMod);
 
     return  <div className="selectorListElement groupHeader" itemselected={selected ? "true" : "false"} onClick={(e) => { this.handleEssenceSelected(e, essenceId) }} key={essenceId}>
               <div className="expander">
@@ -2828,19 +2853,20 @@ class TheoryCrafter extends React.Component {
               <div className="image">
                 <img src={GetItemImageUrl(essenceId, 1, 1, 1)} />
               </div>
-              <span className="label">{essence.name}</span>
+              <div className="label">{modLines}</div>
             </div>
   }
 
-  RenderEssenceSelector(essenceId, selected) {
-    const essence = essences[essenceId];
+  RenderEssenceSelector(essenceId, essenceModId, selected) {
+    const essenceMod = _mods[essenceModId];
+    const modLines = TranslationHelper.TranslateMod(stat_translations, essenceMod);
 
     return  <div className="selectorListElement" itemselected={selected ? "true" : "false"}  onClick={(e) => { this.handleEssenceSelected(e, essenceId) }} key={essenceId}>
               <div></div>
               <div className="image">
                 <img src={GetItemImageUrl(essenceId, 1, 1, 1)} />
               </div>
-              <span className="label">{essence.name}</span>
+              <div className="label">{modLines}</div>
             </div>
   }
 

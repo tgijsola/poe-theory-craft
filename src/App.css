@@ -291,7 +291,9 @@ body {
 }
 
 .selectorList.essenceSelector .selectorListElement .label {
+  width:100%;
   margin: auto 0;
+  text-align: center;
 }
 
 .newBaseItemList .selectorPopupButton .label {

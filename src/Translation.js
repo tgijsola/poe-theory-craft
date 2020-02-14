@@ -196,12 +196,23 @@ export default class TranslationHelper {
         return this.GetStringsForTranslationLines(translationJson, translationLines);
     }
 
-    static TranslateModForGroup = function(translationJson, mod) {
+    static TranslateModForGroup = function(translationJson, minMod, maxMod) {
         // Hacky mod translations go here!
-        if (mod.type in this.ModTypeTranslationLineOverrides) {
-            return [...this.ModTypeTranslationLineOverrides[mod.type]];
-        }                
-        const translationLines = this.GetTranslationLinesForMod(translationJson, mod, null);
-        return this.GetStringsForTranslationLines(translationJson, translationLines, "x");
+        if (minMod.type in this.ModTypeTranslationLineOverrides) {
+            return [...this.ModTypeTranslationLineOverrides[minMod.type]];
+        }
+        const minTranslationLines = this.GetTranslationLinesForMod(translationJson, minMod, null);
+        const maxTranslationLines = this.GetTranslationLinesForMod(translationJson, maxMod, null);
+        let combinedTranslationLines = [];
+        for (let translationLineIdx = 0; translationLineIdx < minTranslationLines.length; ++translationLineIdx) {
+            let combinedTranslationLine = {};
+            const minTranslationLine = minTranslationLines[translationLineIdx];
+            const maxTranslationLine = maxTranslationLines[translationLineIdx];
+            combinedTranslationLine.tidx = minTranslationLine.tidx;
+            combinedTranslationLine.mins = [...minTranslationLine.mins];
+            combinedTranslationLine.maxs = [...maxTranslationLine.maxs];
+            combinedTranslationLines.push(combinedTranslationLine);
+        }
+        return this.GetStringsForTranslationLines(translationJson, combinedTranslationLines);
     }    
 }
