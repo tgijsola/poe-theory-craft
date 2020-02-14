@@ -7,6 +7,7 @@ import RareItemNames from './RareItemnames.js';
 import ModGroups from './ModLookupTables.js';
 import ItemLookupTables from './ItemLookupTables.js';
 import EssenceLookupTables from './EssenceLookupTables.js';
+import CraftingBenchLookupTables from './CraftingBenchLookupTables.js';
 
 import { FixedSizeList as List } from 'react-window';
 import 'balloon-css';
@@ -32,6 +33,7 @@ import mod_types from './data/mod_types.json';
 import stat_translations from './data/stat_translations.json';
 import stats from './data/stats.json';
 import essences from './data/essences.json';
+import crafting_bench_options from './data/crafting_bench_options.json';
 
 function importAll(r) {
   let images = {};
@@ -105,7 +107,7 @@ class CraftedItem extends React.Component {
     return base_items[this.props.itemState.baseItemId]["name"];
   }
 
-  getTipLine(modInstance, generationType) {
+  getTipLine(modInstance, generationType, domain) {
     const mod = this.props.context.mods[modInstance.id];
     let line = "";
     if (generationType === "prefix" || generationType === "suffix") {
@@ -116,6 +118,9 @@ class CraftedItem extends React.Component {
     }
     else if (generationType === "enchantment") {
       line = "Labyrinth Enchantment";
+    }
+    if (domain && domain === "crafted") {
+      line = "Master Crafted " + line;
     }
     return <TipLine line={line} key={modInstance.id + "_tip"}/>;
   }
@@ -162,7 +167,9 @@ class CraftedItem extends React.Component {
   }
 
   getAffixLine(modInstance) {
-    return [this.getTipLine(modInstance, this.props.context.mods[modInstance.id]["generation_type"]), this.getStatLines(modInstance)];
+    const mod = this.props.context.mods[modInstance.id];
+    let additionalClassName = mod.domain === "crafted" ? "crafted" : null;
+    return [this.getTipLine(modInstance, mod["generation_type"], mod.domain), this.getStatLines(modInstance, additionalClassName)];
   }
 
   getAffixBoxes() {
@@ -451,6 +458,24 @@ function GetSpawnWeightForMod(modId, tags, context) {
     }
   }
   return 0;
+}
+
+function GetCraftedAffixCount(itemState, context) {
+  let affixCount = 0;
+  for (let i = 0; i < itemState.affixes.length; ++i) {
+    const affix = context.mods[itemState.affixes[i].id];
+    if (affix["domain"] === "crafted") {
+      affixCount++;
+    }
+  }  
+  return affixCount;
+}
+
+function GetCraftedAffixLimit(itemState, context) {
+  const upperLimit = GetAffixLimit(itemState);
+  const existingMultiMod = itemState.affixes.find((x) => x.id === "StrIntMasterItemGenerationCanHaveMultipleCraftedMods");
+  const craftingLimit = existingMultiMod ? 3 : 1;
+  return Math.min(upperLimit, craftingLimit);
 }
 
 function GetPrefixCount(itemState, context) {
@@ -890,7 +915,7 @@ function CreateItem(baseItemId, level, context) {
     baseImplicits : [],
     gildedImplicits : [],
     corruptions : [],
-    affixes : []
+    affixes : [],
   }  
 
   // Add and roll implicits
@@ -936,6 +961,12 @@ function ModIdComparer (a, b, context) {
       return generationTypeOrder[modAGenerationType] - generationTypeOrder[modBGenerationType];
     }
     return 0;
+  }
+
+  const modAIsCrafted = modA["domain"] === "crafted";
+  const modBIsCrafted = modB["domain"] === "crafted";
+  if (modAIsCrafted != modBIsCrafted) {
+    return (modAIsCrafted ? 1 : -1);
   }
 
   const modASource = context.modLookupTables.getSource(a);
@@ -1088,7 +1119,7 @@ function RollOnModRolls(itemState, modRolls, affixRollCount, context) {
         newItemState = cloneItemState(newItemState);
         switch (modRoll.modType) {
           case "affix":
-            newItemState.affixes.push(mod);
+              newItemState.affixes.push(mod);
             break;
           case "gildedImplicit":
             newItemState.gildedImplicits = [mod];
@@ -1798,6 +1829,59 @@ function EssenceItem(itemState, context, essenceId) {
   return TryApplyAction(itemState, actionInfo, context);
 }
 
+function CanCraftingBenchItem(itemState, context, modId) {
+  if (itemState.corrupted) {
+    return false;
+  }
+
+  if (itemState.rarity === "normal") {
+    return false;
+  }
+
+  if (!modId) {
+    return false;
+  }
+
+  if (GetCraftedAffixCount(itemState, context) >= GetCraftedAffixLimit(itemState, context)) {
+    return false;
+  }
+
+  const validMods = GetValidModsAndWeightsForItem(itemState, context, { forcedModIds : [ modId ], ignoreSpawnWeight : true });
+  if (validMods.length !== 1) {
+    return false;
+  }
+
+  return true;
+}
+
+function GetCraftingBenchActionInfo(itemState, context, modId) {
+  return { ...ActionInfo,
+    affixCountRule : AffixCountRule.Exact,
+    affixCount : 1,
+    rolls : [{ ...ModRollInfo,
+        weightParameters : { 
+          forcedModIds : [ modId ], 
+          ignoreSpawnWeight : true,
+        },
+        forceWeights : 100,        
+        label : "Crafting Bench",
+      },
+      { // Dummy group so mod list shows remaining mod pool after application
+        ...ModRollInfo,
+        fillRemainingAffixRolls : true,
+      }
+    ]
+  };
+}
+
+function CraftingBenchItem(itemState, context, modId) {
+  if (!CanCraftingBenchItem(itemState, context, modId)) {
+    return [false, itemState];
+  }
+
+  const actionInfo = GetCraftingBenchActionInfo(itemState, context, modId);
+  return TryApplyAction(itemState, actionInfo, context);
+}
 
 function NormalButton(props) {
   return <button className="button" onClick={props.onClick} disabled={!props.enabled}>{props.label}</button>;  
@@ -1836,6 +1920,7 @@ class TheoryCrafterContext {
     this.modLookupTables = ModGroups.ParseModGroups(modDatabase, stats, item_classes, mod_types);
     this.itemLookupTables = ItemLookupTables.ParseBaseItems(base_items);
     this.essenceLookupTables = EssenceLookupTables.ParseEssences(essences);
+    this.craftingBenchLookupTables = CraftingBenchLookupTables.ParseCraftingBenchOptions(crafting_bench_options, modDatabase, this.modLookupTables);
     this.rng = rng;
   }
 }
@@ -1859,6 +1944,7 @@ class TheoryCrafter extends React.Component {
       "divine" : CanDivineItem,
       "fossil" : CanFossilItem,
       "essence" : CanEssenceItem,
+      "bench" : CanCraftingBenchItem,
     }
 
     this.getActionInfoMap = {
@@ -1876,6 +1962,7 @@ class TheoryCrafter extends React.Component {
       "divine" : null,
       "fossil" : GetFossilActionInfo,
       "essence" : GetEssenceActionInfo,
+      "bench" : GetCraftingBenchActionInfo,
     }
 
     this.actionMap = {
@@ -1893,6 +1980,7 @@ class TheoryCrafter extends React.Component {
       "divine" : DivineItem,
       "fossil" : FossilItem,
       "essence" : EssenceItem,
+      "bench" : CraftingBenchItem,
     }
 
     this.theoryCrafterContext = new TheoryCrafterContext(_mods, seedrandom());
@@ -1928,8 +2016,13 @@ class TheoryCrafter extends React.Component {
       essencePopupShown : false,
       selectedEssence : "",
       expandedEssenceGroups : [],
+
+      benchPopupShown : false,
+      selectedBenchModId : "",
+      expandedBenchModGroups : [],
     };
     initState.selectedEssence = this.selectInitialEssenceForItem(initState.itemStateHistory[0].itemState);
+    initState.selectedBenchModId = this.selectInitialBenchModForItem(initState.itemStateHistory[0].itemState);
     return initState;
   }
 
@@ -1947,11 +2040,15 @@ class TheoryCrafter extends React.Component {
       newBaseSelectorShown : false,
       fossilPopupShown : false,
       selectedFossils : [],
+      benchPopupShown : false,
       
       influencedExaltPopupShown : false,
     };
     if (!this.state.selectedEssence || !CanEssenceItem(initState.itemStateHistory[0].itemState, this.theoryCrafterContext, this.state.selectedEssence)) {
       initState.selectedEssence = this.selectInitialEssenceForItem(initState.itemStateHistory[0].itemState);
+    }
+    if (!this.state.selectedBenchModId || !CanCraftingBenchItem(initState.itemStateHistory[0].itemState, this.theoryCrafterContext, this.state.selectedBenchModId)) {
+      initState.selectedBenchModId = this.selectInitialBenchModForItem(initState.itemStateHistory[0].itemState);
     }
     return initState;
   }
@@ -1961,6 +2058,24 @@ class TheoryCrafter extends React.Component {
       for (const essenceId of this.theoryCrafterContext.essenceLookupTables.getGroupByGroupId(groupId).essenceIds) {
         if (CanEssenceItem(itemState, this.theoryCrafterContext, essenceId)) {
           return essenceId;
+        }
+      }
+    }
+    return "";
+  }
+
+  selectInitialBenchModForItem(itemState) {
+    const mockItemState = cloneItemState(itemState);
+    mockItemState.rarity = "rare";
+    const item = base_items[itemState.baseItemId];
+    const itemClass = item.item_class;
+    const benchGroups = this.theoryCrafterContext.craftingBenchLookupTables.getGroupsForItemClass(itemClass);
+    if (benchGroups) {
+      for (const benchGroup of benchGroups.groups) {
+        for (const benchMod of benchGroup.benchMods) {
+          if (CanCraftingBenchItem(mockItemState, this.theoryCrafterContext, benchMod.modId)) {
+            return benchMod.modId;
+          }
         }
       }
     }
@@ -2197,6 +2312,7 @@ class TheoryCrafter extends React.Component {
             this.RenderCraftingButton("annul", "Annulment", "Metadata/Items/Currency/CurrencyRemoveMod"),
             this.RenderCraftingButton("bless", "Blessed", "Metadata/Items/Currency/CurrencyRerollImplicit"),
             this.RenderCraftingButton("divine", "Divine", "Metadata/Items/Currency/CurrencyModValues"),
+            this.RenderCraftingBenchCraftingButton(),
             this.RenderEssenceCraftingButton(),
             this.RenderFossilCraftingButton(),
           ]}
@@ -2250,6 +2366,27 @@ class TheoryCrafter extends React.Component {
     return this.RenderCraftingButton("essence " + selectedEssenceId, selectedEssence, selectedEssenceId, () => { this.toggleEssenceSelector() }, dropdownEnabled);
   }
 
+  RenderCraftingBenchCraftingButton() {
+    let dropdownEnabled = false;
+    const itemState = this.getState();
+    const item = base_items[itemState.baseItemId];
+    const benchGroups = this.theoryCrafterContext.craftingBenchLookupTables.getGroupsForItemClass(item.item_class);
+    if (benchGroups) {
+      for (const benchGroup of benchGroups.groups) {
+        for (const benchMod of benchGroup.benchMods) {
+          if (CanCraftingBenchItem(itemState, this.theoryCrafterContext, benchMod.modId)) {
+            dropdownEnabled = true;
+            break;
+          }
+        }
+        if (dropdownEnabled) {
+          break;
+        }
+      }
+    }    
+    let selectedBenchModId = this.state.selectedBenchModId;
+    return this.RenderCraftingButtonManual(["bench", selectedBenchModId].join(" "), "Crafting Bench", "", "Crafting Bench", () => { this.toggleCraftingBenchSelector() }, dropdownEnabled);
+  }
 
   RenderFossilCraftingButton() {
     let dropdownEnabled = false;
@@ -2900,6 +3037,119 @@ class TheoryCrafter extends React.Component {
     this.setState({...this.state, essencePopupShown : !this.state.essencePopupShown});
   }
 
+  RenderCraftingBenchPopup(isShown) {
+    if (isShown) {
+      return <div className="selectorPopup" key="benchPopup">
+                <div className="modal" onClick={() => this.toggleCraftingBenchSelector()}></div>
+                <div className="selectorPopupContents">
+                  <div className="selectorPopupLabelLine" key="selectorPopupLabelLine">
+                  <div className="selectorPopupLabelLine">Select Crafting Bench Mod</div>
+                  <div className="selectorPopupClose" onClick={() => this.toggleCraftingBenchSelector()}>✖</div>
+                </div>
+                <div className="selectorPopupContainer">
+                  {
+                    this.RenderCraftingBenchSelectorList()
+                  }
+                </div>
+              </div>
+            </div>;
+    }
+    else {
+      return [];
+    }
+  }
+
+  RenderCraftingBenchSelectorList() {
+    const item = base_items[this.getState().baseItemId];
+    const itemClass = item.item_class;
+    const benchGroups = this.theoryCrafterContext.craftingBenchLookupTables.getGroupsForItemClass(itemClass);
+    let benchElements = [];
+    for (const benchGroup of benchGroups.groups) {
+      const groupExpanded = this.state.expandedBenchModGroups.includes(benchGroup.benchGroup);
+      const selectedInGroup = benchGroup.benchMods.find((x) => x.modId === this.state.selectedBenchModId);
+      let firstInGroup = true;
+      for (let i = 0; i < benchGroup.benchMods.length; ++i) {
+        const benchMod = benchGroup.benchMods[i];
+        const benchModId = benchMod.modId;
+        const selected = benchModId === this.state.selectedBenchModId;
+        if (CanCraftingBenchItem(this.getState(), this.theoryCrafterContext, benchModId)) {
+          if (!groupExpanded && selectedInGroup) {
+            if (selected) {
+              benchElements.push(this.RenderCraftingBenchGroupSelector(benchGroup, benchMod, true, false));
+              break;
+            }
+          }
+          else {
+            if (firstInGroup) {
+              benchElements.push(this.RenderCraftingBenchGroupSelector(benchGroup, benchMod, selected, groupExpanded));
+              if (!groupExpanded) {
+                break;
+              }
+              firstInGroup = false;
+            }
+            else {
+              benchElements.push(this.RenderCraftingBenchSelector(benchGroup, benchMod, selected));
+            }
+          }
+        }
+      }
+    }
+    return <div className="selectorList benchSelector">
+      { benchElements }
+    </div>
+  }
+
+  RenderCraftingBenchGroupSelector(benchGroup, benchMod, selected, groupExpanded) {
+    const benchModData = _mods[benchMod.modId];
+    const modLines = TranslationHelper.TranslateMod(stat_translations, benchModData);
+
+    return  <div className="selectorListElement groupHeader" itemselected={selected ? "true" : "false"} onClick={(e) => { this.handleBenchModSelected(e, benchMod.modId) }} key={benchMod.modId}>
+              <div className="expander">
+                <FontAwesomeIcon size="2x" icon={groupExpanded ? faCaretDown : faCaretRight} onClick={(e) => { this.handleBenchModGroupCollapseToggle(e, benchGroup.benchGroup) }}/>
+              </div>
+              <div className="label">{modLines}</div>
+            </div>
+  }
+
+  RenderCraftingBenchSelector(benchGroup, benchMod, selected) {
+    const benchModData = _mods[benchMod.modId];
+    const modLines = TranslationHelper.TranslateMod(stat_translations, benchModData);
+
+    return  <div className="selectorListElement groupHeader" itemselected={selected ? "true" : "false"} onClick={(e) => { this.handleBenchModSelected(e, benchMod.modId) }} key={benchMod.modId}>
+              <div className="label">{modLines}</div>
+            </div>
+  }
+
+  handleBenchModSelected(e, benchModId) {
+    e.stopPropagation();
+    let newState = {...this.state, selectedBenchModId : benchModId};
+    if (benchModId && CanCraftingBenchItem(this.getState(), this.theoryCrafterContext, benchModId)) {
+      newState.selectedActionForModList = "bench";
+    }
+    else {
+      newState.selectedActionForModList = "";
+    }
+    this.setState(newState);
+  }
+
+  handleBenchModGroupCollapseToggle(e, groupName) {
+    e.stopPropagation();
+    const idx = this.state.expandedBenchModGroups.findIndex((x) => { return x === groupName });
+    let newState = null;
+    if (idx >= 0) {
+      newState = { ...this.state };
+      newState.expandedBenchModGroups.splice(idx, 1);
+    }
+    else {
+      newState = { ...this.state, expandedBenchModGroups : [...this.state.expandedBenchModGroups, groupName] };
+    }
+    this.setState(newState);    
+  }
+
+  toggleCraftingBenchSelector() {
+    this.setState({...this.state, benchPopupShown : !this.state.benchPopupShown});
+  }
+
   handleSortModsToggled(e) {
     this.setState( {...this.state, sortMods : !this.state.sortMods} );
   }
@@ -2944,7 +3194,9 @@ class TheoryCrafter extends React.Component {
     if (selectedAction === "essence") {
       return [this.state.selectedEssence];
     }
-    // TODO: Add crafting bench here!
+    if (selectedAction === "bench") {
+      return [this.state.selectedBenchModId];
+    }
     return [];
   }
 
@@ -3005,6 +3257,7 @@ class TheoryCrafter extends React.Component {
             this.RenderFossilPopup(this.state.fossilPopupShown),
             this.RenderInfluencedExaltPopup(this.state.influencedExaltPopupShown),
             this.RenderEssencePopup(this.state.essencePopupShown),
+            this.RenderCraftingBenchPopup(this.state.benchPopupShown),
             this.RenderNewBasePopup(this.state.newBaseSelectorShown),
           ]}
         </div>
