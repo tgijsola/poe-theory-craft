@@ -1023,15 +1023,46 @@ function AddInfluenceToItem(itemState, influence) {
   return [true, newState];
 }
 
+function ClearAffixes(itemState, affixClearRule, context ) {
+  if (affixClearRule === AffixClearRule.DoNotClear) {
+    return [true, itemState];
+  }
+  if (affixClearRule === AffixClearRule.Clear) {
+    return [true, { ...cloneItemState(itemState), affixes : [] }];
+  }
+  if (affixClearRule === AffixClearRule.ClearAndRespectMetacraft) {
+    const cannotChangeSuffixes = itemState.affixes.find((x) => x.id === "DexMasterItemGenerationCannotChangeSuffixes");
+    const cannotChangePrefixes = itemState.affixes.find((x) => x.id === "StrMasterItemGenerationCannotChangePrefixes");
+    let newItemState = { ...cloneItemState(itemState), affixes : [] };
+    const newItemAffixes = cloneMods(itemState.affixes);
+    for (const affix of newItemAffixes) {
+      const mod = context.mods[affix.id];
+      if (cannotChangeSuffixes && mod.generation_type === "suffix") {
+        newItemState.affixes.push(affix);
+      }
+      if (cannotChangePrefixes && mod.generation_type === "prefix") {
+        newItemState.affixes.push(affix);
+      }
+    }
+    return [true, newItemState];
+  }
+}
+
 const AffixCountRule = {
   RandomMagicAffixCount : "magic",
   RandomRareAffixCount : "rare",
   Exact : "exact",
 }
 
+const AffixClearRule = {
+  DoNotClear : "noclear",
+  Clear : "clear",
+  ClearAndRespectMetacraft : "clearmeta"
+}
+
 const ActionInfo = {
   setRarity : null,
-  clearAffixes : false,
+  clearAffixes : AffixClearRule.DoNotClear,
   generateNewName : false,
   addInfluences : [],
   affixCountRule : AffixCountRule.Exact,
@@ -1051,9 +1082,7 @@ const ModRollInfo = {
 
 function GetModRollGroupsAndWeightsForAction(itemState, actionInfo, context) {
   let newItemState = cloneItemState(itemState);
-  if (actionInfo.clearAffixes) {
-    newItemState.affixes = [];
-  }
+  [, newItemState] = ClearAffixes(newItemState, actionInfo.clearAffixes, context);
   if (actionInfo.setRarity) {
     newItemState.rarity = actionInfo.setRarity;
   }
@@ -1155,9 +1184,7 @@ function RollOnModRolls(itemState, modRolls, affixRollCount, context) {
 
 function TryApplyAction(itemState, actionInfo, context) {
   let newItemState = cloneItemState(itemState);
-  if (actionInfo.clearAffixes) {
-    newItemState.affixes = [];
-  }
+  [, newItemState] = ClearAffixes(newItemState, actionInfo.clearAffixes, context);
   if (actionInfo.setRarity) {
     newItemState.rarity = actionInfo.setRarity;
   }
@@ -1177,15 +1204,21 @@ function TryApplyAction(itemState, actionInfo, context) {
   switch (actionInfo.affixCountRule) {
     case AffixCountRule.RandomMagicAffixCount:
       affixCount = RollMagicAffixCount(itemState.baseItemId, context.rng);
+      affixCount = Math.max(0, affixCount - newItemState.affixes.length);
       break;
     case AffixCountRule.RandomRareAffixCount:
       affixCount = RollRareAffixCount(itemState.baseItemId, context.rng);
+      affixCount = Math.max(0, affixCount - newItemState.affixes.length);
       break;
     case AffixCountRule.Exact:
       affixCount = actionInfo.affixCount;
       break;
     default:
       break;
+  }
+
+  if (affixCount === 0) {
+    return [true, newItemState];
   }
 
   return RollOnModRolls(newItemState, actionInfo.rolls, affixCount, context);
@@ -1210,7 +1243,14 @@ function ScourItem(itemState, context) {
   if (!CanScourItem(itemState, context)) {
     return [false, itemState];
   }
-  return [true, { ...cloneItemState(itemState), generatedName : "", rarity : "normal", affixes : [] }];
+  let newItemState = cloneItemState(itemState);
+  [, newItemState] = ClearAffixes(newItemState, AffixClearRule.ClearAndRespectMetacraft, context);
+  newItemState.rarity = (newItemState.affixes.length > 0) ? itemState.rarity : "normal";
+  if (newItemState.affixes.length === 0) {
+    newItemState.generatedName = "";
+    newItemState.rarity = "normal"
+  }
+  return [true, newItemState];
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -1259,7 +1299,7 @@ function CanAlterationItem(itemState, context) {
 
 function GetAlterationActionInfo(itemState, context) {
   return { ...ActionInfo,
-    clearAffixes : true,
+    clearAffixes : AffixClearRule.ClearAndRespectMetacraft,
     affixCountRule : AffixCountRule.RandomMagicAffixCount,
     rolls : [{ ...ModRollInfo, modType : "affix", fillRemainingAffixRolls : true }],
   };
@@ -1387,7 +1427,7 @@ function CanChaosItem(itemState, context) {
 function GetChaosActionInfo(itemState, context) {
   return { ...ActionInfo,
     generateNewName : true,
-    clearAffixes : true,
+    clearAffixes : AffixClearRule.ClearAndRespectMetacraft,
     affixCountRule : AffixCountRule.RandomRareAffixCount,
     rolls : [{ ...ModRollInfo, modType : "affix", fillRemainingAffixRolls : true, }],
   };
@@ -1456,7 +1496,7 @@ function CanExaltedWithInfluenceItem(itemState, context, influence) {
 function GetExaltedWithInfluenceActionInfo(itemState, context, influence) {
   const influenceTag = GetInfluenceTag(itemState.baseItemId, influence);
   return { ...ActionInfo,
-    clearAffixes : false,
+    clearAffixes : AffixClearRule.DoNotClear,
     generateNewName : false,
     addInfluences : [influence],
     affixCountRule : AffixCountRule.Exact,
@@ -1494,8 +1534,24 @@ function AnnulmentItem(itemState, context) {
   }
 
   let newItemState = cloneItemState(itemState);
-  const numAffixes = GetAffixCount(newItemState, context);
-  const affixIdxToRemove = randRange(context.rng, 0, numAffixes - 1);
+  const cannotChangeSuffixes = itemState.affixes.find((x) => x.id === "DexMasterItemGenerationCannotChangeSuffixes");
+  const cannotChangePrefixes = itemState.affixes.find((x) => x.id === "StrMasterItemGenerationCannotChangePrefixes");
+  let removableAffixIndices = [];
+  for (let affixIdx = 0; affixIdx < newItemState.affixes.length; ++affixIdx) {
+    const affix = newItemState.affixes[affixIdx];
+    const mod = context.mods[affix.id];
+    if (cannotChangeSuffixes && mod.generation_type === "suffix") {
+      continue;
+    }
+    if (cannotChangePrefixes && mod.generation_type === "prefix") {
+      continue;
+    }
+    removableAffixIndices.push(affixIdx);
+  }
+  if (removableAffixIndices.length === 0) {
+    return [false, itemState];
+  }
+  const affixIdxToRemove = removableAffixIndices[randRange(context.rng, 0, removableAffixIndices.length - 1)];
   newItemState.affixes.splice(affixIdxToRemove, 1);
   return [true, newItemState];
 }
@@ -1542,7 +1598,15 @@ function DivineItem(itemState, context) {
   }
 
   let newItemState = cloneItemState(itemState);
+  const cannotChangeSuffixes = itemState.affixes.find((x) => x.id === "DexMasterItemGenerationCannotChangeSuffixes");
+  const cannotChangePrefixes = itemState.affixes.find((x) => x.id === "StrMasterItemGenerationCannotChangePrefixes");
   for (let affix of newItemState.affixes) {
+    if (cannotChangeSuffixes && context.mods[affix.id].generation_type === "suffix") {
+      continue;
+    }
+    else if (cannotChangePrefixes && context.mods[affix.id].generation_type === "prefix") {
+      continue;
+    }
     affix.values = RollModValues(affix.id, false, context);
   }
   return [true, newItemState];
@@ -1731,7 +1795,7 @@ function GetRollsForFossil(itemState, context) {
 function GetFossilActionInfo(itemState, context) {
   return { ...ActionInfo,
     setRarity : "rare",
-    clearAffixes : true,
+    clearAffixes : AffixClearRule.Clear,
     generateNewName : true,
     affixCountRule : AffixCountRule.RandomRareAffixCount,
     rolls : GetRollsForFossil(...arguments) 
@@ -1795,7 +1859,7 @@ function GetEssenceActionInfo(itemState, context, essenceId) {
 
   return { ...ActionInfo,
     setRarity : "rare",
-    clearAffixes : true,
+    clearAffixes : AffixClearRule.Clear,
     generateNewName : true,
     affixCountRule : AffixCountRule.RandomRareAffixCount,
     rolls : [
