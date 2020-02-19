@@ -213,7 +213,8 @@ class ModListGroupLine extends React.Component {
   shouldComponentUpdate(nextProps, nextState) {
     return this.props.collapsed !== nextProps.collapsed
       || this.props.modWeight !== nextProps.modWeight
-      || this.props.prob !== nextProps.prob;
+      || this.props.prob !== nextProps.prob
+      || this.props.selected !== nextProps.selected;
   }  
   render() {
     let spanIdx = 0;
@@ -236,8 +237,8 @@ class ModListGroupLine extends React.Component {
     const probClass = "modProb " + this.props.probabilityClass;
     const dropDownArrow = this.props.collapsed ? faCaretRight : faCaretDown;
 
-    return <div className="modGroupLine" onClick={this.props.onGroupClicked}>
-      <div className="modTier" key="modTier">
+    return <div className="modGroupLine" onClick={this.props.onLineClicked} itemselected={this.props.selected ? "true" : "false"}>
+      <div className="modTier" key="modTier" onClick={this.props.onGroupExpandClicked}>
         <FontAwesomeIcon icon={dropDownArrow} />
       </div>
       <div className={tierClass} key="modTierContents">
@@ -246,12 +247,18 @@ class ModListGroupLine extends React.Component {
       <div className="modName" key="modName">
         { nameLineElements }
       </div>
-      <div className="modWeight" key="modWeight">
-        { this.props.weight }
-      </div>
-      <div className={probClass} key="modProb">
-        { this.props.prob }
-      </div>
+      { this.props.weight ? 
+        <div className="modWeight" key="modWeight">
+          { this.props.weight }
+        </div>
+        : []
+      }
+      { this.props.prob ?
+        <div className={probClass} key="modProb">
+          { this.props.prob }
+        </div>
+        : [] 
+      }
     </div>;
   }
 }
@@ -261,7 +268,8 @@ class ModListModLine extends React.Component {
   shouldComponentUpdate(nextProps, nextState) {
     return this.props.modTier !== nextProps.modTier
       || this.props.modWeight !== nextProps.modWeight
-      || this.props.prob !== nextProps.prob;
+      || this.props.prob !== nextProps.prob
+      || this.props.selected !== nextProps.selected;    
   }  
   render() {
     let spanIdx = 0;
@@ -281,7 +289,7 @@ class ModListModLine extends React.Component {
       }
     }
 
-    return <div className="modLine">
+    return <div className="modLine" onClick={this.props.onLineClicked} itemselected={this.props.selected ? "true" : "false"}>
       <div className="modLevel" key="modLevel">
         { this.props.requiredLevel }
       </div>
@@ -291,12 +299,18 @@ class ModListModLine extends React.Component {
       <div className="modName" key="modName">
         { nameLineElements }
       </div>
-      <div className="modWeight" key="modWeight">
-        { this.props.weight }
-      </div>
-      <div className="modProb" key="modProb">
-        { this.props.prob }
-      </div>
+      { this.props.weight ? 
+        <div className="modWeight" key="modWeight">
+          { this.props.weight }
+        </div>
+        : []
+      }
+      { this.props.prob ?
+        <div  key="modProb">
+          { this.props.prob }
+        </div>
+        : [] 
+      }      
     </div>;
   }
 }
@@ -308,7 +322,18 @@ class ModGroup extends React.Component {
       const modWeight = x.weight;
       const modName = TranslationHelper.TranslateMod(stat_translations, modData);
       const modTierInfo = GetTierForMod(this.props.itemState, x.modId, this.props.context);
-      return <ModListModLine lineClass="modLine" context={this.props.context} requiredLevel={modData["required_level"]} tierString={modData["generation_type"].slice(0, 1) + (modTierInfo[0] + 1)} nameLines={modName} weight={modWeight} prob={(modWeight / this.props.totalWeight).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={x.modId} />
+
+      return <ModListModLine 
+        lineClass="modLine" 
+        context={this.props.context} 
+        requiredLevel={modData["required_level"]} 
+        tierString={modData["generation_type"].slice(0, 1) + (modTierInfo[0] + 1)} 
+        onLineClicked={() => this.props.onLineClicked(x.modId)}
+        nameLines={modName} 
+        weight={modWeight} 
+        prob={(modWeight / this.props.totalWeight).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} 
+        key={x.modId} 
+      />
     });
   }
 
@@ -364,7 +389,22 @@ class ModGroup extends React.Component {
     else {
       probabilityClass = "guaranteed";
     }
-    const elementList = [<ModListGroupLine tierContents={tierContentsString} nameLines={groupName} collapsed={this.props.collapsed} onGroupClicked={() => this.props.onGroupClicked(this.props.groupKey)} lineClass="modGroupLine" context={this.props.context} weight={groupWeight} probabilityClass={probabilityClass} prob={(probability).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} key={groupName} />];
+
+    const elementList = [
+      <ModListGroupLine 
+        tierContents={tierContentsString} 
+        nameLines={groupName} 
+        collapsed={this.props.collapsed} 
+        onExpandClicked={() => this.props.onGroupExpandClicked(this.props.groupKey)}
+        onLineClicked={() => this.props.onGroupClicked(this.props.groupKey)} 
+        lineClass="modGroupLine" 
+        context={this.props.context} 
+        weight={groupWeight} 
+        probabilityClass={probabilityClass} 
+        prob={(probability).toLocaleString(undefined, {style: 'percent', minimumFractionDigits: 2})} 
+        key={groupName} 
+      />
+    ];
     if (!this.props.collapsed) {
       elementList.push(...this.renderModsInModGroup(this.props.modAndWeightGroup, this.props.totalWeight));
     }
@@ -422,7 +462,9 @@ class ModList extends React.Component {
                   <ModGroup 
                     groupSource={modAndWeightGroup.groupSource} 
                     groupName={modAndWeightGroup.groupName} 
-                    onGroupClicked={this.props.onGroupClicked} 
+                    onExpandClicked={this.props.onGroupExpandClicked}
+                    onGroupClicked={this.props.onGroupClicked}
+                    onLineClicked={this.props.onLineClicked} 
                     modAndWeightGroup={modAndWeightGroup.modsAndWeights} 
                     groupKey={modAndWeightGroup.groupKey} 
                     totalWeight={modAndWeightGroup.totalWeight} 
@@ -1833,8 +1875,6 @@ function CanEssenceItem(itemState, context, essenceId) {
     return false;
   }
 
-  const itemLevelLimit = essence.item_level_restriction;
-
   let mockItemState = cloneItemState(itemState);
   mockItemState.affixes = [];
   mockItemState.rarity = "rare";
@@ -1948,19 +1988,19 @@ function CraftingBenchItem(itemState, context, modId) {
 }
 
 function NormalButton(props) {
-  return <button className="button" onClick={props.onClick} disabled={!props.enabled}>{props.label}</button>;  
+  return <button onClick={props.onClick} disabled={!props.enabled}>{props.label}</button>;  
 }
 
 function CraftingButton(props) {
   return <div className="craftingButtonContainer">
           <button 
             className="craftingButton" 
-            selectedformodlist={props.selectedForModList} 
+            itemselected={props.itemselected ? "true" : null} 
             onClick={props.onClick} 
             onContextMenu={props.onRightClick}
             disabled={!props.enabled} 
             aria-label={props.itemTooltip} 
-            data-balloon-pos="up" 
+            data-balloon-pos="down" 
             data-balloon-nofocus left={props.left} 
             right={props.right}
           >
@@ -2047,9 +2087,26 @@ class TheoryCrafter extends React.Component {
       "bench" : CraftingBenchItem,
     }
 
-    this.theoryCrafterContext = new TheoryCrafterContext(_mods, seedrandom());
+    this.LeftPanelView = {
+      CraftedItem : 0,
+      FossilSelector: 1,
+      EssenceSelector: 2,
+      InfluenceExaltSelector: 3,
+      BenchSelector : 4,
+    }
 
-    const normalItemState = CreateItem("Metadata/Items/Armours/Boots/BootsAtlas1", 100, this.theoryCrafterContext);
+    this.theoryCrafterContext = new TheoryCrafterContext(_mods, seedrandom());
+    const allBases = this.theoryCrafterContext.itemLookupTables.getValidBaseTypes();
+    const randomBase = allBases[randRange(this.theoryCrafterContext.rng, 0, allBases.length - 1)];
+    let normalItemState = CreateItem(randomBase, 86, this.theoryCrafterContext);    
+
+    // let normalItemState = CreateItem("Metadata/Items/Rings/RingAtlas1", 86, this.theoryCrafterContext);
+    // [, normalItemState] = AddInfluenceToItem(normalItemState, "shaper");
+    // [, normalItemState] = TransmutationItem(normalItemState, this.theoryCrafterContext);
+    // [, normalItemState] = RegalItem(normalItemState, this.theoryCrafterContext);
+
+
+
     this.state = this.initState(normalItemState);
   }
 
@@ -2057,11 +2114,12 @@ class TheoryCrafter extends React.Component {
     let initState = {
       itemStateHistory : [ { itemState: initItemState, action : "" } ],
       itemStateHistoryIdx : 0,
-      lastCommand : "",
-      sortMods : false,
+      sortMods : true,
       selectedActionForModList : "",
       popupActionForModList : "",
       expandedGroups : new Set(),
+
+      leftPanelView : this.LeftPanelView.CraftedItem,
       
       newBaseSelectorShown : false,
       newBaseItemLevel : 100,
@@ -2071,19 +2129,18 @@ class TheoryCrafter extends React.Component {
       newBaseRequiredTag : "",
       newBaseAllowedStats : { dex: 1, int: 1, str: 1},
 
-      fossilPopupShown : false,
-      selectedFossils : [],
-      
-      influencedExaltPopupShown : false,
+      selectedBenchModId : "",
+      benchFilter : "",
+      expandedBenchModGroups : [],
+
       selectedInfluenceExalt : "crusader",
 
-      essencePopupShown : false,
       selectedEssence : "",
+      essenceFilter : "",
       expandedEssenceGroups : [],
 
-      benchPopupShown : false,
-      selectedBenchModId : "",
-      expandedBenchModGroups : [],
+      selectedFossils : [],
+      fossilFilter : "",
     };
     initState.selectedEssence = this.selectInitialEssenceForItem(initState.itemStateHistory[0].itemState);
     initState.selectedBenchModId = this.selectInitialBenchModForItem(initState.itemStateHistory[0].itemState);
@@ -2096,24 +2153,21 @@ class TheoryCrafter extends React.Component {
       
       itemStateHistory : [ { itemState: initItemState, action : "" } ],
       itemStateHistoryIdx : 0,
-      lastCommand : "",
       selectedActionForModList : "",
       popupActionForModList : "",
       expandedGroups : new Set(),
-      
+
+      leftPanelView : this.LeftPanelView.CraftedItem,
       newBaseSelectorShown : false,
-      fossilPopupShown : false,
+
+      selectedBenchModId : "",
+      selectedEssence : "",
       selectedFossils : [],
-      benchPopupShown : false,
-      
-      influencedExaltPopupShown : false,
     };
     if (!this.state.selectedEssence || !CanEssenceItem(initState.itemStateHistory[0].itemState, this.theoryCrafterContext, this.state.selectedEssence)) {
       initState.selectedEssence = this.selectInitialEssenceForItem(initState.itemStateHistory[0].itemState);
     }
-    if (!this.state.selectedBenchModId || !CanCraftingBenchItem(initState.itemStateHistory[0].itemState, this.theoryCrafterContext, this.state.selectedBenchModId)) {
-      initState.selectedBenchModId = this.selectInitialBenchModForItem(initState.itemStateHistory[0].itemState);
-    }
+    initState.selectedBenchModId = "";
     return initState;
   }
 
@@ -2146,26 +2200,22 @@ class TheoryCrafter extends React.Component {
     return "";
   }
 
-  pushState(newState, actionName) {
-    return { ...this.state, itemStateHistory : [ ...this.state.itemStateHistory, { itemState: newState, action : actionName } ] };
-  }
-
-  getState() {
+  getItemState() {
     return this.state.itemStateHistory[this.state.itemStateHistoryIdx].itemState;
   }
 
-  canUndoState() {
+  canUndoItemState() {
     return this.state.itemStateHistoryIdx > 0;
   }
 
-  getUndoLabel() {
-    if (!this.canUndoState()) {
+  getUndoItemStateLabel() {
+    if (!this.canUndoItemState()) {
       return "Undo";
     }
     return "Undo " + this.state.itemStateHistory[this.state.itemStateHistoryIdx].action;
   }
 
-  undoState() {
+  undoItemState() {
     if (this.state.itemStateHistoryIdx > 0)
     {
       this.setState({ ...this.state, itemStateHistoryIdx :  this.state.itemStateHistoryIdx - 1 });
@@ -2177,7 +2227,7 @@ class TheoryCrafter extends React.Component {
       && (this.state.itemStateHistoryIdx > 0);
   }
 
-  getRerollLabel() {
+  getRerollActionLabel() {
     if (!this.canRerollAction()) {
       return "Reroll Action";
     }
@@ -2197,32 +2247,32 @@ class TheoryCrafter extends React.Component {
     this.performAction(action, previousItemState, this.state.itemStateHistoryIdx);
   }
 
-  canRedoState() {
+  canRedoItemState() {
     return this.state.itemStateHistoryIdx < this.state.itemStateHistory.length - 1;
   }
 
-  getRedoLabel() {
-    if (!this.canRedoState()) {
+  getRedoItemStateLabel() {
+    if (!this.canRedoItemState()) {
       return "Redo";
     }
     return "Redo " + this.state.itemStateHistory[this.state.itemStateHistoryIdx + 1].action;
   }
 
-  redoState() {
+  redoItemState() {
     if (this.state.itemStateHistoryIdx < this.state.itemStateHistory.length - 1)
     {
       this.setState({ ...this.state, itemStateHistoryIdx :  this.state.itemStateHistoryIdx + 1 });
     }
   }
 
-  insertAndCutStateAt(newState, actionName, index) {
+  insertAndCutItemStateAt(newState, actionName, index) {
     const newStateHistory = this.state.itemStateHistory.slice(0, index);
     newStateHistory.push( { itemState: newState, action : actionName } );
     return { ...this.state, itemStateHistory : newStateHistory, itemStateHistoryIdx : index };    
   }
 
-  insertAndCutState(newState, actionName) {
-    return this.insertAndCutStateAt(newState, actionName, this.state.itemStateHistoryIdx + 1);
+  insertAndCutItemState(newState, actionName) {
+    return this.insertAndCutItemStateAt(newState, actionName, this.state.itemStateHistoryIdx + 1);
   }
 
   canPerformAction(actionName, itemState) {
@@ -2243,16 +2293,35 @@ class TheoryCrafter extends React.Component {
     const result = this.actionMap[splitAction[0]](itemState, this.theoryCrafterContext, ...(splitAction.slice(1)));
     if (result[0]) {
       if (splitLocationOverride) {
-        this.setState(this.insertAndCutStateAt(result[1], actionName, splitLocationOverride));
+        this.setState(this.insertAndCutItemStateAt(result[1], actionName, splitLocationOverride));
       }
       else {
-        this.setState(this.insertAndCutState(result[1], actionName));
+        this.setState(this.insertAndCutItemState(result[1], actionName));
       }
     }
   }
 
-  RenderBaseSelectButton() {
-    return <button onClick={() => this.handleBaseSelectButtonClicked()} key="baseItemCreateButton">Create New Item</button>;
+  doStringsPassFilter(filter, strings) {
+    // Find EACH sub-string of filter in ANY string of strings
+    if (filter) {
+      const filterStrings = filter.split(/\s+/);
+      for (const filterString of filterStrings) {
+        const lcFilterString = filterString.toLowerCase();
+        let foundFilterString = false;
+        for (const searchString of strings) {
+          const lcSearchString = searchString.toLowerCase();
+          if (lcSearchString.indexOf(lcFilterString) === -1) {
+            continue;
+          }
+          foundFilterString = true;
+          break;
+        }
+        if (!foundFilterString) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   RenderUtilityButtonPanel() {
@@ -2270,33 +2339,33 @@ class TheoryCrafter extends React.Component {
             &nbsp;
           </div>          
           <CraftingButton
-            itemTooltip="Toggled Sorted Mods"
+            itemTooltip="Toggle Sorted Affix List"
             label={<FontAwesomeIcon size="2x" icon={faSortAmountDown} />}
             onClick={(e) => this.handleSortModsToggled(e)}
             enabled={true}
-            selectedForModList={this.state.sortMods ? "true" : "false"}
+            itemselected={this.state.sortMods}
           />
           <div>
             &nbsp;
           </div>
           <CraftingButton
-            itemTooltip={this.getUndoLabel()}
-            onClick={() => this.undoState()}
-            enabled={this.canUndoState()}
+            itemTooltip={this.getUndoItemStateLabel()}
+            onClick={() => this.undoItemState()}
+            enabled={this.canUndoItemState()}
             label={<FontAwesomeIcon size="2x" icon={faUndo} />}
             key="undo"
           />          
           <CraftingButton
-            itemTooltip={this.getRerollLabel()}
+            itemTooltip={this.getRerollActionLabel()}
             label={<FontAwesomeIcon size="2x" icon={faDice} />}
             onClick={() => this.rerollAction()}
             enabled={this.canRerollAction()}
           />
           <CraftingButton
-            itemTooltip={this.getRedoLabel()}
+            itemTooltip={this.getRedoItemStateLabel()}
             label={<FontAwesomeIcon size="2x" icon={faRedo} />}
-            onClick={() => this.redoState()}
-            enabled={this.canRedoState()}
+            onClick={() => this.redoItemState()}
+            enabled={this.canRedoItemState()}
           />
         </div>
       </div>
@@ -2304,11 +2373,11 @@ class TheoryCrafter extends React.Component {
   }
 
   RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction = null, dropdownEnabled = true) {
-    const buttonOnClick = () => this.performAction(actionName, this.getState());
+    const buttonOnClick = () => this.performAction(actionName, this.getItemState());
     const buttonOnRightClick = (e) => this.selectActionForModList(e, actionName);
     const actionSplit = actionName.split(' ');
     const selectedForModList = this.getSelectedActionForModList() === actionSplit[0];
-    const isEnabled = this.canPerformAction(actionName, this.getState());
+    const isEnabled = this.canPerformAction(actionName, this.getItemState());
     const showDropDown = dropdownAction !== null;
 
     const craftingButtons = [<CraftingButton 
@@ -2318,7 +2387,7 @@ class TheoryCrafter extends React.Component {
       onRightClick={buttonOnRightClick}
       enabled={isEnabled} 
       label={label} 
-      selectedForModList={selectedForModList ? "true" : "false"}
+      itemselected={selectedForModList}
       key={actionName} 
       left={showDropDown ? "true" : "false"}
     />]
@@ -2329,7 +2398,7 @@ class TheoryCrafter extends React.Component {
           onRightClick={buttonOnRightClick}          
           enabled={dropdownEnabled}
           label={<FontAwesomeIcon icon={faCog} />}
-          selectedForModList={selectedForModList ? "true" : "false"}
+          itemselected={selectedForModList}
           key={actionName + "_dropdown"}
           right="true"
         />
@@ -2340,8 +2409,8 @@ class TheoryCrafter extends React.Component {
   }
 
   RenderCraftingButton(actionName, label, currencyId, dropdownAction = null, dropdownEnabled = true) {
-    const buttonOnClick = () => this.performAction(actionName, this.getState());
-    const isEnabled = this.canPerformAction(actionName, this.getState());
+    const buttonOnClick = () => this.performAction(actionName, this.getItemState());
+    const isEnabled = this.canPerformAction(actionName, this.getItemState());
 
     const baseItem = base_items[currencyId];
     if (!baseItem) {
@@ -2355,7 +2424,11 @@ class TheoryCrafter extends React.Component {
   }
 
   RenderCraftingPanel() {
-    return <div className="craftedItemContainer" key="craftedItemContainer">
+    if (this.state.leftPanelView !== this.LeftPanelView.CraftedItem) {
+      return [];
+    }
+
+    return <div className="crafteditem-container" key="craftedItemContainer">
       { this.RenderUtilityButtonPanel() }  
       <div className="craftingButtonSection" key="craftingButtonSection">
         <div className="craftingButtonLine" key="craftingButtonLine1">
@@ -2392,9 +2465,10 @@ class TheoryCrafter extends React.Component {
 
   RenderModListPanel() {
     const selectedAction = this.getSelectedActionForModList();
-    return <div className="modListContainer" key="modListContainer">
+    return <div className="modlist-container" key="modListContainer">
       <ModList
         expandedGroups={this.state.expandedGroups}
+        onGroupExpandClicked={(groupKey) => this.onGroupClicked(groupKey)}
         onGroupClicked={(groupKey) => this.onGroupClicked(groupKey)}
         getActionInfoFunction={this.getActionInfoFunctionForModList(selectedAction)}
         getActionInfoAdditionalParameters={this.getAdditionalActionParametersForModList(selectedAction)}
@@ -2409,7 +2483,7 @@ class TheoryCrafter extends React.Component {
   RenderEssenceCraftingButton() {
     let dropdownEnabled = false;
     for (const essenceId in essences) {
-      if (CanEssenceItem(this.getState(), this.theoryCrafterContext, essenceId)) {
+      if (CanEssenceItem(this.getItemState(), this.theoryCrafterContext, essenceId)) {
         dropdownEnabled = true;
         break;
       }
@@ -2427,12 +2501,12 @@ class TheoryCrafter extends React.Component {
     }
 
     const selectedEssence = essences[selectedEssenceId];
-    return this.RenderCraftingButton("essence " + selectedEssenceId, selectedEssence, selectedEssenceId, () => { this.toggleEssenceSelector() }, dropdownEnabled);
+    return this.RenderCraftingButton("essence " + selectedEssenceId, selectedEssence, selectedEssenceId, () => { this.showPanel(this.LeftPanelView.EssenceSelector) }, dropdownEnabled);
   }
 
   RenderCraftingBenchCraftingButton() {
     let dropdownEnabled = false;
-    const itemState = this.getState();
+    const itemState = this.getItemState();
     const item = base_items[itemState.baseItemId];
     const benchGroups = this.theoryCrafterContext.craftingBenchLookupTables.getGroupsForItemClass(item.item_class);
     if (benchGroups) {
@@ -2449,13 +2523,13 @@ class TheoryCrafter extends React.Component {
       }
     }    
     let selectedBenchModId = this.state.selectedBenchModId;
-    return this.RenderCraftingButtonManual(["bench", selectedBenchModId].join(" "), "Crafting Bench", "", "Crafting Bench", () => { this.toggleCraftingBenchSelector() }, dropdownEnabled);
+    return this.RenderCraftingButtonManual(["bench", selectedBenchModId].join(" "), "Crafting Bench", "", "Crafting Bench", () => { this.showPanel(this.LeftPanelView.BenchSelector) }, dropdownEnabled);
   }
 
   RenderFossilCraftingButton() {
     let dropdownEnabled = false;
     for (const fossilId in fossils) {
-      if (CanFossilItem(this.getState(), this.theoryCrafterContext, fossilId)) {
+      if (CanFossilItem(this.getItemState(), this.theoryCrafterContext, fossilId)) {
         dropdownEnabled = true;
         break;
       }
@@ -2465,7 +2539,7 @@ class TheoryCrafter extends React.Component {
       "Fossil", 
       "https://web.poecdn.com/image/Art/2DItems/Currency/Delve/Reroll2x2C.png", 
       "Fossil", 
-      () => { this.toggleFossilSelector() },
+      () => { this.showPanel(this.LeftPanelView.FossilSelector) },
       dropdownEnabled
     );
   }
@@ -2484,14 +2558,14 @@ class TheoryCrafter extends React.Component {
 
     let dropdownEnabled = false;
     for (const influenceType in influenceTypeToItemId) {
-      const canInfluence = CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, influenceType);
+      const canInfluence = CanExaltedWithInfluenceItem(this.getItemState(), this.theoryCrafterContext, influenceType);
       if (canInfluence) {
         dropdownEnabled = true;
         break;
       }
     }
 
-    return this.RenderCraftingButton("exalt_inf " + this.state.selectedInfluenceExalt, itemName, itemId, () => { this.toggleInfluencedExaltSelector() }, dropdownEnabled);
+    return this.RenderCraftingButton("exalt_inf " + this.state.selectedInfluenceExalt, itemName, itemId, () => { this.showPanel(this.LeftPanelView.InfluenceExaltSelector) }, dropdownEnabled);
   }
 
   GetAllowedBasesForNewBasePopup() {
@@ -2819,15 +2893,20 @@ class TheoryCrafter extends React.Component {
   }
 
   RenderInfluencedExaltPopup(isShown) {
-    if (isShown) {
-      return <div className="selectorPopup" key="influencedExaltPopup">
-                <div className="modal" onClick={() => this.toggleInfluencedExaltSelector()}></div>
-                <div className="selectorPopupContents">
-                  <div className="selectorPopupLabelLine" key="selectorPopupLabelLine">
-                  <div className="selectorPopupLabelLine">Select Influence</div>
-                  <div className="selectorPopupClose" onClick={() => this.toggleInfluencedExaltSelector()}>✖</div>
+    if (this.state.leftPanelView !== this.LeftPanelView.InfluenceExaltSelector) {
+      return [];
+    }
+    return <div className="selection-prompt-container" key="exaltPopup">
+              <div className="selection-prompt-contents">
+                <div className="selection-prompt-header">
+                  <div className="selection-prompt-label">
+                    <div className="selection-prompt-label-line">Select Exalted Orb</div>
+                  </div>
+                  <div className="selection-prompt-close">
+                    <button className="selection-prompt-close-button" onClick={() => this.hidePanel()}>Done</button>
+                  </div>
                 </div>
-                <div className="selectorPopupContainer">
+                <div className="selection-prompt-list-container">
                   { [
                     this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareCrusader", "crusader"),
                     this.RenderInfluencedExaltSelector("Metadata/Items/AtlasExiles/AddModToRareHunter", "hunter"),
@@ -2836,49 +2915,41 @@ class TheoryCrafter extends React.Component {
                   ] }
                 </div>
               </div>
-            </div>;
-    }
-    else {
-      return [];
-    }
+            </div>
   }
 
   RenderInfluencedExaltSelector(itemId, influenceType) {
-    const enabled = CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, influenceType);
+    const enabled = CanExaltedWithInfluenceItem(this.getItemState(), this.theoryCrafterContext, influenceType);
     const checked = (enabled && this.state.selectedInfluenceExalt === influenceType) ? "true" : null;
     const item = base_items[itemId];
     const itemName = item.name;
     const itemDescription = item.properties.description;
-    let itemDescriptionSplit = ["<b>" + itemName + "</b>"];
+    let itemDescriptionSplit = ["<span class='" + influenceType + "-name'>" + itemName + "</span>"];
     itemDescriptionSplit = [...itemDescriptionSplit, itemDescription.split("\\r\\n")];
 
     let itemDescriptionHtml = { __html: itemDescriptionSplit.join("<br />") };
 
     const itemUrl = GetItemImageUrl(itemId);
-    const buttonStyle = {
-      backgroundImage: 'url(' + itemUrl +')',
-    };
 
-    return  <button 
-              className="selectorPopupButton" 
-              disabled={!enabled} 
-              itemselected={checked} 
-              onClick={ (e) => this.handleInfluencedExaltSelectorClicked(e, influenceType) } 
-              key={itemId}
-              style={buttonStyle}
-            >
-                <span 
-                  className="label" 
-                  dangerouslySetInnerHTML={itemDescriptionHtml}
-                />
-            </button>
+    return (
+      <div 
+        className="selection-prompt-list-option exalted"
+        selection-disabled={!enabled ? "true" : null} 
+        selection-selected={checked ? "true" : null} 
+        onClick={ (e) => this.handleInfluencedExaltSelectorClicked(e, influenceType) }>
+        <div 
+          className="selection-prompt-list-label exalted" 
+          dangerouslySetInnerHTML={itemDescriptionHtml}>
+        </div>
+        <img src={itemUrl} className="selection-prompt-list-image"></img>
+      </div>
+    )
   }
 
   handleInfluencedExaltSelectorClicked(e, influenceType) {
     e.stopPropagation();
     let newState = { ...this.state, selectedInfluenceExalt: influenceType};
-    // TODO: Delete this when user can manually select action for mod list
-    if (CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, newState.selectedInfluenceExalt)) {
+    if (CanExaltedWithInfluenceItem(this.getItemState(), this.theoryCrafterContext, newState.selectedInfluenceExalt)) {
       newState.popupActionForModList = "exalt_inf";
     }
     else {
@@ -2887,16 +2958,29 @@ class TheoryCrafter extends React.Component {
     this.setState(newState);
   }
 
-  RenderFossilPopup(isShown) {
-    if (isShown) {
-      return <div className="fossilPopup" key="fossilPopup">
-               <div className="modal" onClick={() => this.toggleFossilSelector()}></div>
-                <div className="fossilPopupContents">
-                  <div className="fossilPopupLabelLine" key="fossilPopupLabelLine">
-                  <div className="fossilPopupLabelLine">Select Fossils</div>
-                  <div className="fossilPopupClose" onClick={() => this.toggleFossilSelector()}>✖</div>
+  RenderFossilPopup() {
+    if (this.state.leftPanelView !== this.LeftPanelView.FossilSelector) {
+      return [];
+    }
+
+    return <div className="selection-prompt-container" key="fossilPopup">
+              <div className="selection-prompt-contents">
+                <div className="selection-prompt-header">
+                  <div className="selection-prompt-label">
+                    <div className="selection-prompt-label-line">Select Fossils</div>
+                    <div className="selection-prompt-filter-line">
+                      <div className="selection-prompt-filter-label">
+                        Filter: 
+                      </div>
+                      <input className="selection-prompt-filter-input" onChange={(e) => { this.handleFossilFilterChanged(e) }}/>
+                      <button className="selection-prompt-filter-clear-button" onClick={() => { this.handleFossilFilterCleared() }}>X</button>
+                    </div>                  
+                  </div>
+                  <div className="selection-prompt-close">
+                    <button className="selection-prompt-close-button" onClick={() => this.hidePanel()}>Done</button>
+                  </div>
                 </div>
-                <div className="fossilSelectorContainer">
+                <div className="selection-prompt-list-container">
                   { [
                     this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingChaos", "Aberrant"),
                     this.RenderFossilSelector("Metadata/Items/Currency/CurrencyDelveCraftingCasterMods", "Aetheric"),
@@ -2923,44 +3007,49 @@ class TheoryCrafter extends React.Component {
                   ] }
                 </div>
               </div>
-            </div>;
-    }
-    else {
-      return [];
-    }
+            </div>
   }
 
+  handleFossilFilterChanged(e) {
+    this.setState({...this.state, fossilFilter : e.target.value});
+  }
+
+  handleFossilFilterCleared() {
+    this.setState({...this.state, fossilFilter : ""});
+  }
+  
   RenderFossilSelector(fossilId) {
-    const checked = this.state.selectedFossils.includes(fossilId) ? "true" : null;
-    const enabled = (this.state.selectedFossils.length < 4 || checked) && CanFossilItem(this.getState(), this.theoryCrafterContext, fossilId);
+    const checked = this.state.selectedFossils.includes(fossilId);
+    const enabled = (this.state.selectedFossils.length < 4 || checked) && CanFossilItem(this.getItemState(), this.theoryCrafterContext, fossilId);
     const fossil = fossils[fossilId];
     const fossilName = fossil.name;
     const fossilDescriptions = fossil.descriptions;
-    let fossilDescriptionsSplit = ["<b>" + fossilName + "</b>"];
+    let fossilDescriptionsSplit = ["<span class='fossil-name'>" + fossilName + "</span>"];
     for (const fossilDescription of fossilDescriptions) {
       fossilDescriptionsSplit = [...fossilDescriptionsSplit, fossilDescription.split("\\r\\n")];
     }
 
+    if (!this.doStringsPassFilter(this.state.fossilFilter, [fossilName, ...fossilDescriptions])) {
+      return [];
+    }
+
     let fossilDescriptionHtml = { __html: fossilDescriptionsSplit.join("<br />") };
-
+        
     const itemUrl = GetItemImageUrl(fossilId);
-    const buttonStyle = {
-      backgroundImage: 'url(' + itemUrl +')',
-    };
 
-    return  <button 
-              className="fossilSelectorButton" 
-              disabled={!enabled} 
-              fossilselected={checked} 
-              onClick={ (e) => this.handleFossilSelectorClicked(e, fossilId) } 
-              key={fossilId}
-              style = {buttonStyle}
-            >
-                <span 
-                  className="label" 
-                  dangerouslySetInnerHTML={fossilDescriptionHtml}
-                />
-            </button>
+    return (
+      <div 
+        className="selection-prompt-list-option fossil"
+        selection-disabled={!enabled ? "true" : null} 
+        selection-selected={checked ? "true" : null} 
+        onClick={ (e) => this.handleFossilSelectorClicked(e, fossilId) }>
+        <div 
+          className="selection-prompt-list-label" 
+          dangerouslySetInnerHTML={fossilDescriptionHtml}>
+        </div>
+        <img src={itemUrl} className="selection-prompt-list-image"></img>        
+      </div>
+    )
   }
 
   handleFossilSelectorClicked(e, fossilId) {
@@ -2972,9 +3061,15 @@ class TheoryCrafter extends React.Component {
       newState.selectedFossils.splice(idx, 1);
     }
     else {
-      newState = { ...this.state, selectedFossils : [...this.state.selectedFossils, fossilId] };
+      if ((this.state.selectedFossils.length < 4) && (CanFossilItem(this.getItemState(), this.theoryCrafterContext, fossilId))) {
+        newState = { ...this.state, selectedFossils : [...this.state.selectedFossils, fossilId] };          
+      }
+      else {
+        return;
+      }
     }
-    if (newState.selectedFossils.length > 0 && CanFossilItem(this.getState(), this.theoryCrafterContext, ...newState.selectedFossils)) {
+
+    if (newState.selectedFossils.length > 0 && CanFossilItem(this.getItemState(), this.theoryCrafterContext, ...newState.selectedFossils)) {
       newState.selectedActionForModList = "fossil";
     }
     else {
@@ -2983,98 +3078,131 @@ class TheoryCrafter extends React.Component {
     this.setState(newState);
   }
 
-  RenderEssencePopup(isShown) {
-    if (isShown) {
-      return <div className="selectorPopup" key="essencePopup">
-                <div className="modal" onClick={() => this.toggleEssenceSelector()}></div>
-                <div className="selectorPopupContents">
-                  <div className="selectorPopupLabelLine" key="selectorPopupLabelLine">
-                  <div className="selectorPopupLabelLine">Select Essence</div>
-                  <div className="selectorPopupClose" onClick={() => this.toggleEssenceSelector()}>✖</div>
-                </div>
-                <div className="selectorPopupContainer">
-                  {
-                    this.RenderEssenceSelectorList()
-                  }
-                </div>
-              </div>
-            </div>;
-    }
-    else {
+  RenderEssencePopup() {
+    if (this.state.leftPanelView !== this.LeftPanelView.EssenceSelector) {
       return [];
     }
+
+    return <div className="selection-prompt-container" key="essencePopup">
+              <div className="selection-prompt-contents">
+                <div className="selection-prompt-header">
+                  <div className="selection-prompt-label">
+                    <div className="selection-prompt-label-line">Select Essence</div>
+                    <div className="selection-prompt-filter-line">
+                      <div className="selection-prompt-filter-label">
+                        Filter: 
+                      </div>
+                      <input className="selection-prompt-filter-input" onChange={(e) => { this.handleEssenceFilterChanged(e) }} value={this.state.essenceFilter}/>
+                      <button className="selection-prompt-filter-clear-button" onClick={() => { this.handleEssenceFilterCleared() }}>X</button>
+                    </div>                  
+                  </div>
+                  <div className="selection-prompt-close">
+                    <button className="selection-prompt-close-button" onClick={() => this.hidePanel()}>Done</button>
+                  </div>
+                </div>
+                <div className="selection-prompt-list-container">
+                  { this.RenderEssenceSelectorList() }
+                </div>
+              </div>
+            </div>
   }
 
   RenderEssenceSelectorList() {
     let essenceElements = [];
     for (const groupId of this.theoryCrafterContext.essenceLookupTables.getSortedEssenceGroupIds()) {
       const group = this.theoryCrafterContext.essenceLookupTables.getGroupByGroupId(groupId);
-      const groupExpanded = this.state.expandedEssenceGroups.includes(groupId);
-      const selectedInGroup = group.essenceIds.includes(this.state.selectedEssence);
+      
       let firstInGroup = true;
+      let validEssenceIdsInGroup = [];
+      let essenceIdToModLines = {};
       for (let i = 0; i < group.essenceIds.length; ++i) {
         const essenceId = group.essenceIds[i];
+        const essenceModId = GetEssenceModForItem(this.getItemState(), essenceId);
+        const essenceMod = _mods[essenceModId];
+        const modLines = TranslationHelper.TranslateMod(stat_translations, essenceMod);
+        essenceIdToModLines[essenceId] = modLines;
+        if (this.doStringsPassFilter(this.state.essenceFilter, modLines)) {
+          if (CanEssenceItem(this.getItemState(), this.theoryCrafterContext, essenceId)) {
+            validEssenceIdsInGroup.push(essenceId);
+          }
+        }
+      }
+
+      if (validEssenceIdsInGroup.length === 0) {
+        continue;
+      }
+      if (validEssenceIdsInGroup.length === 1) {
+        const essenceId = validEssenceIdsInGroup[0];
         const selected = essenceId === this.state.selectedEssence;
-        if (CanEssenceItem(this.getState(), this.theoryCrafterContext, essenceId)) {
-          const essenceModId = GetEssenceModForItem(this.getState(), essenceId);
+        essenceElements.push(this.RenderEssenceGroupSelector(essenceId, essenceIdToModLines[essenceId], selected, false, false));        
+      }
+      else { // validEssenceIdsInGroup.length > 1
+        const groupExpanded = this.state.expandedEssenceGroups.includes(groupId);
+        const selectedInGroup = group.essenceIds.includes(this.state.selectedEssence);
+  
+        for (const essenceId of validEssenceIdsInGroup) {      
+          const selected = essenceId === this.state.selectedEssence;
+  
           if (!groupExpanded && selectedInGroup) {
             if (selected) {
-              essenceElements.push(this.RenderEssenceGroupSelector(essenceId, essenceModId, true, groupId, false));
+              essenceElements.push(this.RenderEssenceGroupSelector(essenceId, essenceIdToModLines[essenceId], true, true, true, groupId, false));
               break;
             }
           }
-          else {
-            if (firstInGroup) {
-              essenceElements.push(this.RenderEssenceGroupSelector(essenceId, essenceModId, selected, groupId, groupExpanded));
+          else if (firstInGroup) {
+              essenceElements.push(this.RenderEssenceGroupSelector(essenceId, essenceIdToModLines[essenceId], selected, true, true, groupId, groupExpanded));
               if (!groupExpanded) {
                 break;
               }
               firstInGroup = false;
-            }
-            else {
-              essenceElements.push(this.RenderEssenceSelector(essenceId, essenceModId, selected));
-            }
+          }
+          else {
+            essenceElements.push(this.RenderEssenceGroupSelector(essenceId, essenceIdToModLines[essenceId], selected, false, false));
           }
         }
       }
     }
-    return <div className="selectorList essenceSelector">
-      { essenceElements }
-    </div>
+    return essenceElements;
   }
 
-  RenderEssenceGroupSelector(essenceId, essenceModId, selected, groupId, groupExpanded) {
-    const essenceMod = _mods[essenceModId];
-    const modLines = TranslationHelper.TranslateMod(stat_translations, essenceMod);
-
-    return  <div className="selectorListElement groupHeader" itemselected={selected ? "true" : "false"} onClick={(e) => { this.handleEssenceSelected(e, essenceId) }} key={essenceId}>
-              <div className="expander">
-                <FontAwesomeIcon size="2x" icon={groupExpanded ? faCaretDown : faCaretRight} onClick={(e) => { this.handleEssenceGroupCollapseToggle(e, groupId) }}/>
-              </div>
-              <div className="image">
-                <img src={GetItemImageUrl(essenceId, 1, 1, 1)} />
-              </div>
-              <div className="label">{modLines}</div>
-            </div>
+  handleEssenceFilterChanged(e) {
+    this.setState({...this.state, essenceFilter : e.target.value});
   }
 
-  RenderEssenceSelector(essenceId, essenceModId, selected) {
-    const essenceMod = _mods[essenceModId];
-    const modLines = TranslationHelper.TranslateMod(stat_translations, essenceMod);
-
-    return  <div className="selectorListElement" itemselected={selected ? "true" : "false"}  onClick={(e) => { this.handleEssenceSelected(e, essenceId) }} key={essenceId}>
-              <div></div>
-              <div className="image">
+  handleEssenceFilterCleared() {
+    this.setState({...this.state, essenceFilter : ""});
+  }
+  
+  RenderEssenceGroupSelector(essenceId, modLines, selected, isGroupHeader, showGroupExpander, groupId, groupExpanded) {
+    const essence = essences[essenceId];
+    const essenceName = essence.name;
+    return  <div className="selection-prompt-list-option" 
+              sub-item={isGroupHeader ? null : "true"}    
+              selection-selected={selected ? "true" : null} 
+              onClick={(e) => { this.handleEssenceSelected(e, essenceId) }} 
+              key={essenceId}
+            >
+              <div className="selection-prompt-list-expander">
+              { showGroupExpander ? 
+                <FontAwesomeIcon 
+                  size="2x" 
+                  icon={groupExpanded ? faCaretDown : faCaretRight} 
+                  onClick={(e) => { this.handleEssenceGroupCollapseToggle(e, groupId) }}
+                />
+                : <div/>
+              }
+              </div>
+              <div className="selection-prompt-list-label"><span className="essence-name">{essenceName}</span><br/>{modLines}</div>
+              <div className="selection-prompt-list-image">
                 <img src={GetItemImageUrl(essenceId, 1, 1, 1)} />
               </div>
-              <div className="label">{modLines}</div>
             </div>
   }
 
   handleEssenceSelected(e, essenceId) {
     e.stopPropagation();
     let newState = {...this.state, selectedEssence : essenceId};
-    if (essenceId && CanEssenceItem(this.getState(), this.theoryCrafterContext, essenceId)) {
+    if (essenceId && CanEssenceItem(this.getItemState(), this.theoryCrafterContext, essenceId)) {
       newState.selectedActionForModList = "essence";
     }
     else {
@@ -3097,97 +3225,149 @@ class TheoryCrafter extends React.Component {
     this.setState(newState);    
   }
 
-  toggleEssenceSelector() {
-    this.setState({...this.state, essencePopupShown : !this.state.essencePopupShown});
-  }
-
-  RenderCraftingBenchPopup(isShown) {
-    if (isShown) {
-      return <div className="selectorPopup" key="benchPopup">
-                <div className="modal" onClick={() => this.toggleCraftingBenchSelector()}></div>
-                <div className="selectorPopupContents">
-                  <div className="selectorPopupLabelLine" key="selectorPopupLabelLine">
-                  <div className="selectorPopupLabelLine">Select Crafting Bench Mod</div>
-                  <div className="selectorPopupClose" onClick={() => this.toggleCraftingBenchSelector()}>✖</div>
-                </div>
-                <div className="selectorPopupContainer">
-                  {
-                    this.RenderCraftingBenchSelectorList()
-                  }
-                </div>
-              </div>
-            </div>;
-    }
-    else {
+  RenderCraftingBenchPopup() {
+    if (this.state.leftPanelView !== this.LeftPanelView.BenchSelector) {
       return [];
     }
+    
+    return <div className="selection-prompt-container" key="benchPopup">
+              <div className="selection-prompt-contents">
+                <div className="selection-prompt-header">
+                  <div className="selection-prompt-label">
+                    <div className="selection-prompt-label-line">Select Bench Mod</div>
+                    <div className="selection-prompt-filter-line">
+                      <div className="selection-prompt-filter-label">
+                        Filter: 
+                      </div>
+                      <input className="selection-prompt-filter-input" onChange={(e) => { this.handleBenchFilterChanged(e) }} value={this.state.benchFilter}/>
+                      <button className="selection-prompt-filter-clear-button" onClick={() => { this.handleBenchFilterCleared() }}>X</button>
+                    </div>                  
+                  </div>
+                  <div className="selection-prompt-close">
+                    <button className="selection-prompt-close-button" onClick={() => this.hidePanel()}>Done</button>
+                  </div>
+                </div>
+                <div className="selection-prompt-list-container">
+                  { this.RenderCraftingBenchSelectorList() }
+                </div>
+              </div>
+            </div>
   }
 
+  handleBenchFilterChanged(e) {
+    this.setState({...this.state, benchFilter : e.target.value});
+  }
+
+  handleBenchFilterCleared() {
+    this.setState({...this.state, benchFilter : ""});
+  }
+  
   RenderCraftingBenchSelectorList() {
-    const item = base_items[this.getState().baseItemId];
+
+    const item = base_items[this.getItemState().baseItemId];
     const itemClass = item.item_class;
+
     const benchGroups = this.theoryCrafterContext.craftingBenchLookupTables.getGroupsForItemClass(itemClass);
     let benchElements = [];
     for (const benchGroup of benchGroups.groups) {
-      const groupExpanded = this.state.expandedBenchModGroups.includes(benchGroup.benchGroup);
-      const selectedInGroup = benchGroup.benchMods.find((x) => x.modId === this.state.selectedBenchModId);
+      
       let firstInGroup = true;
+      let validBenchModsInGroup = [];
+      let modIdToModLines = {};
       for (let i = 0; i < benchGroup.benchMods.length; ++i) {
         const benchMod = benchGroup.benchMods[i];
-        const benchModId = benchMod.modId;
-        const selected = benchModId === this.state.selectedBenchModId;
-        if (CanCraftingBenchItem(this.getState(), this.theoryCrafterContext, benchModId)) {
+        let modId = benchMod.modId;
+        const mod = _mods[modId];
+        const modLines = TranslationHelper.TranslateMod(stat_translations, mod);
+        modIdToModLines[modId] = modLines;
+        if (this.doStringsPassFilter(this.state.benchFilter, modLines)) {
+          if (CanCraftingBenchItem(this.getItemState(), this.theoryCrafterContext, modId)) {
+            validBenchModsInGroup.push(benchMod);
+          }
+        }
+      }
+
+      if (validBenchModsInGroup.length === 0) {
+        continue;
+      }
+      if (validBenchModsInGroup.length === 1) {
+        const benchMod = validBenchModsInGroup[0];
+        const selected = benchMod.modId === this.state.selectedBenchModId;
+        benchElements.push(this.RenderCraftingBenchGroupSelector(benchGroup, validBenchModsInGroup[0], selected, true, false, false));
+      }
+      else { // validBenchModsInGroup.length > 1
+        const groupExpanded = this.state.expandedBenchModGroups.includes(benchGroup.benchGroup);
+        const selectedInGroup = benchGroup.benchMods.find((x) => x.modId === this.state.selectedBenchModId);
+        for (const benchMod of validBenchModsInGroup) {
+          const selected = benchMod.modId === this.state.selectedBenchModId;
           if (!groupExpanded && selectedInGroup) {
             if (selected) {
-              benchElements.push(this.RenderCraftingBenchGroupSelector(benchGroup, benchMod, true, false));
+              benchElements.push(this.RenderCraftingBenchGroupSelector(benchGroup, benchMod, true, true, true, false));
               break;
             }
           }
+          else if (firstInGroup) {
+            benchElements.push(this.RenderCraftingBenchGroupSelector(benchGroup, benchMod, selected, true, true, groupExpanded));
+            if (!groupExpanded) {
+              break;
+            }
+            firstInGroup = false;
+          }
           else {
-            if (firstInGroup) {
-              benchElements.push(this.RenderCraftingBenchGroupSelector(benchGroup, benchMod, selected, groupExpanded));
-              if (!groupExpanded) {
-                break;
-              }
-              firstInGroup = false;
-            }
-            else {
-              benchElements.push(this.RenderCraftingBenchSelector(benchGroup, benchMod, selected));
-            }
+            benchElements.push(this.RenderCraftingBenchGroupSelector(benchGroup, benchMod, selected, false, false, false));
           }
         }
       }
     }
-    return <div className="selectorList benchSelector">
-      { benchElements }
-    </div>
+    return ( benchElements );
   }
 
-  RenderCraftingBenchGroupSelector(benchGroup, benchMod, selected, groupExpanded) {
-    const benchModData = _mods[benchMod.modId];
-    const modLines = TranslationHelper.TranslateMod(stat_translations, benchModData);
+  RenderCraftingBenchGroupSelector(benchGroup, benchMod, selected, isGroupHeader, showGroupExpander, groupExpanded) {
+    const modData = _mods[benchMod.modId];
+    const modLines = TranslationHelper.TranslateMod(stat_translations, modData);
+    let spanIdx = 0;
+    let nameLineElements = modLines.map( (x) => <span key={spanIdx++}>{x}</span>);
+    for (let i = 1; i < nameLineElements.length; i += 2) {
+      nameLineElements.splice(i, 0, <br key={"br_" + i}/>);
+    }
+    const tierString = modData["generation_type"].slice(0, 1);
+    let tierClass = "";
+    if (tierString.length > 0) {
+      const affixLetter = tierString[0];
+      if (affixLetter === "p") {
+        tierClass = "prefix";
+      }
+      else if (affixLetter === "s") {
+        tierClass = "suffix";
+      }
+    }
 
-    return  <div className="selectorListElement groupHeader" itemselected={selected ? "true" : "false"} onClick={(e) => { this.handleBenchModSelected(e, benchMod.modId) }} key={benchMod.modId}>
-              <div className="expander">
-                <FontAwesomeIcon size="2x" icon={groupExpanded ? faCaretDown : faCaretRight} onClick={(e) => { this.handleBenchModGroupCollapseToggle(e, benchGroup.benchGroup) }}/>
-              </div>
-              <div className="label">{modLines}</div>
-            </div>
-  }
-
-  RenderCraftingBenchSelector(benchGroup, benchMod, selected) {
-    const benchModData = _mods[benchMod.modId];
-    const modLines = TranslationHelper.TranslateMod(stat_translations, benchModData);
-
-    return  <div className="selectorListElement groupHeader" itemselected={selected ? "true" : "false"} onClick={(e) => { this.handleBenchModSelected(e, benchMod.modId) }} key={benchMod.modId}>
-              <div className="label">{modLines}</div>
+    return  <div className="selection-prompt-list-option bench"
+              sub-item={isGroupHeader ? null : "true"}
+              selection-selected={selected ? "true" : null} 
+              onClick={(e) => { this.handleBenchModSelected(e, benchMod.modId) }} 
+              key={benchMod.modId}
+            >
+                <div className="selection-prompt-list-expander">
+                { showGroupExpander ? 
+                  <FontAwesomeIcon 
+                    size="2x" 
+                    icon={groupExpanded ? faCaretDown : faCaretRight} 
+                    onClick={(e) => { this.handleBenchModGroupCollapseToggle(e, benchGroup.benchGroup) }}
+                  />
+                  : <div/>
+                }
+                </div>
+              <div className="selection-prompt-list-label">{nameLineElements}</div>
+              <div className={"selection-prompt-list-info " + tierClass}>{tierString}</div>
+              <div className={"selection-prompt-list-info"}>{modData["required_level"]}</div>
             </div>
   }
 
   handleBenchModSelected(e, benchModId) {
     e.stopPropagation();
     let newState = {...this.state, selectedBenchModId : benchModId};
-    if (benchModId && CanCraftingBenchItem(this.getState(), this.theoryCrafterContext, benchModId)) {
+    if (benchModId && CanCraftingBenchItem(this.getItemState(), this.theoryCrafterContext, benchModId)) {
       newState.selectedActionForModList = "bench";
     }
     else {
@@ -3210,10 +3390,6 @@ class TheoryCrafter extends React.Component {
     this.setState(newState);    
   }
 
-  toggleCraftingBenchSelector() {
-    this.setState({...this.state, benchPopupShown : !this.state.benchPopupShown});
-  }
-
   handleSortModsToggled(e) {
     this.setState( {...this.state, sortMods : !this.state.sortMods} );
   }
@@ -3228,8 +3404,8 @@ class TheoryCrafter extends React.Component {
 
   getSelectedActionForModList() {
     let selectedAction = (this.state.popupActionForModList || this.state.selectedActionForModList);
-    if (!selectedAction || (!this.canPerformAction([selectedAction, ...this.getAdditionalActionParametersForModList(selectedAction)].join(" "), this.getState()))) {
-      const rarity = this.getState().rarity;
+    if (!selectedAction || (!this.canPerformAction([selectedAction, ...this.getAdditionalActionParametersForModList(selectedAction)].join(" "), this.getItemState()))) {
+      const rarity = this.getItemState().rarity;
       if (rarity === "normal") {
         return "transmute";
       }
@@ -3284,7 +3460,7 @@ class TheoryCrafter extends React.Component {
     let newState = { ...this.state, influencedExaltPopupShown : !this.state.influencedExaltPopupShown };
     if (newState.influencedExaltPopupShown)
     { 
-      if (CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, newState.selectedInfluenceExalt)) {
+      if (CanExaltedWithInfluenceItem(this.getItemState(), this.theoryCrafterContext, newState.selectedInfluenceExalt)) {
         newState.popupActionForModList = "exalt_inf";
       }
       else {
@@ -3293,38 +3469,52 @@ class TheoryCrafter extends React.Component {
     }
     else {
       newState.popupActionForModList = "";
-      if (CanExaltedWithInfluenceItem(this.getState(), this.theoryCrafterContext, newState.selectedInfluenceExalt)) {
+      if (CanExaltedWithInfluenceItem(this.getItemState(), this.theoryCrafterContext, newState.selectedInfluenceExalt)) {
         newState.selectedActionForModList = "exalt_inf";
       }
     }
     this.setState(newState);
   }
 
-  toggleFossilSelector() {
-    this.setState({ ...this.state, fossilPopupShown : !this.state.fossilPopupShown });
+  showPanel(newPanel) {
+    this.setState({ ...this.state, leftPanelView : newPanel});
+  }
+
+  hidePanel() {
+    this.setState({ ...this.state, leftPanelView : this.LeftPanelView.CraftedItem});
   }
 
   render() {
     return [
-        <div className="topPanel" key="topPanel">
-          <div className="info top">
-            Path of Exile Theory Crafter
+        <div className="fullscreen-container" key="fullscreen-container">
+          <div className="top-panel">
+            <div className="info-panel">
+              <div className="info-contents-top" key="info-top">
+                Path of Exile "Come On And Slam" Crafter
+              </div>
+              <div className="info-contents-bottom" key="info-bottom">
+                v0.1 - by @jsola
+              </div>
+            </div>
           </div>
-          <div className="info bottom">
-            v0.1 - by @jsola
+          <div className="bottom-panel">
+            <div className="bottom-contents">
+              <div className="left-contents">
+                {[ 
+                  this.RenderCraftingPanel(),
+                  this.RenderFossilPopup(),
+                  this.RenderInfluencedExaltPopup(),
+                  this.RenderEssencePopup(),
+                  this.RenderCraftingBenchPopup(),
+                  this.RenderNewBasePopup(this.state.newBaseSelectorShown),
+                ]}
+              </div>
+              <div className="right-contents">
+                { this.RenderModListPanel() }
+              </div>
+            </div>
           </div>
         </div>,
-        <div className="bottomPanel" key="bottomPanel">
-          {[
-            this.RenderCraftingPanel(),
-            this.RenderModListPanel(),
-            this.RenderFossilPopup(this.state.fossilPopupShown),
-            this.RenderInfluencedExaltPopup(this.state.influencedExaltPopupShown),
-            this.RenderEssencePopup(this.state.essencePopupShown),
-            this.RenderCraftingBenchPopup(this.state.benchPopupShown),
-            this.RenderNewBasePopup(this.state.newBaseSelectorShown),
-          ]}
-        </div>
     ]
   }
 }

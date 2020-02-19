@@ -75,7 +75,7 @@ export class CraftingBenchLookupTables {
                     return a.firstStatIdx - b.firstStatIdx
                 });
             for (const benchGroup of benchGroups.groups) {
-                benchGroup.benchMods.sort((a, b) => { return a.tier - b.tier});
+                benchGroup.benchMods.sort((a, b) => { return b.tier - a.tier });
             }
         }
     }
@@ -97,6 +97,10 @@ export function ParseCraftingBenchOptions(crafting_bench_options, mods, modLooku
         const benchModGenerationType = benchMod.generation_type;
         const benchCost = benchOption.cost;
         const benchCosts = Object.keys(benchCost);
+        if (benchCosts.length > 1) {
+            // Need to change bench crafter view to display multiple currency types in a single cost
+            console.log("Unsupported bench costs for " + benchModId + ": " + benchCost);
+        }
         const benchCostCurrency = (benchCosts && benchCosts.length > 0) ? benchCosts[0] : null;
         const benchCostAmount = benchCostCurrency ? benchCost[benchCostCurrency] : 0;
 

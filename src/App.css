@@ -27,7 +27,7 @@
 }
 
 html {
-  overflow-y: scroll;
+  overflow-y: hidden;
 }
 
 body {
@@ -150,150 +150,20 @@ body {
   text-shadow: 1px 1px #444;  
 }
 
-.fossilPopup {
-  background-color: black;
-  position: absolute;
-  top: 0px;
-  border: 3px double white;
-}
-
-.fossilPopupLabelLine {
-  padding: 5px;
-  display: flex;
-}
-
-.fossilPopupLabelLine {
-  color: white;
-  grid-column-start: 3;
-  grid-row: initial;
-  margin: 0 auto;
-}
-
-.fossilPopupClose {
-  width: 30px;
-  cursor: default;
-  float: right;
-  text-align: center;
-  margin: auto 0;
-}
-.fossilSelectorContainer {
-  width: 450px;
-  display: flex;
-  flex-wrap: wrap;
-  overflow: auto;
-}
-
-/* Hide scrollbar for Chrome, Safari and Opera */
-.fossilSelectorContainer::-webkit-scrollbar {
-  display: none;
-}
-
-/* Hide scrollbar for IE and Edge */
-.fossilSelectorContainer {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.fossilSelectorButton {
-  width : 225px;
-  height : 85px;
-  display: flex;
-  background-size: 50px 50px;
-  background-position: left center;
-  background-position-x: 10px;
-  background-repeat: no-repeat;
-  justify-content: right;
-  flex-direction: row-reverse;
-  background-color: #e8e8e8;
-  border-color: #ffffff;
-  border-radius: 5px 5px 5px 5px;
-  font-family: 'FontinSmallCaps';
-  font-size: 18px;  
-}
-
-.fossilSelectorButton:disabled {
-  background-color: #555;
-  border-color: rgb(124, 124, 124);
-}
-
-.fossilSelectorButton[fossilselected=true] {
-  background-color: rgb(255, 235, 144);
-}
-
-.fossilSelectorButton:focus {
-  outline:0;
-}
-
-.fossilSelectorButton .label {
-  width:90%;
-  height:100%;
-  text-align: center;
-  font-size: 14px;
-  text-shadow: 1px 1px white;
-}
-
-.fossilSelectorButton img:active {
-  transform: translateY(1px);
-}
-
-.fossilSelectorButton .label:active {
-  transform: translateY(1px);
-}
-
-.fossilSelectorButton:disabled img {
-  filter: grayscale(100%);  
-}
-
-.fossilSelectorButton:disabled .label {
-  color : #888;
-  text-shadow: 1px 1px #444;  
-}
-
 .selectorPopupContainer.newBase {
   width: 1280px;
   height: 700px;
   background: #222;  
 }
 
-.selectorList {
-  color: whitesmoke;
-  font-family: 'FontinSmallCaps';
-  font-size: 18px;
-}
-
-.selectorListElement {
-}
-
-.selectorListElement[itemselected="true"] {
-  background-color: rgba(255, 235, 144, 0.329);  
-}
-
-.selectorList.essenceSelector {
-  width: 100%;
-}
-.selectorList.essenceSelector .selectorListElement {
-  display: flex;
-  flex-direction: row;
-  color: whitesmoke;
-  width: 100%;
-}
-
-.selectorList.essenceSelector .selectorListElement .expander {
+.modGroupLine .modTier {
   flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
-  text-align: center;
-  margin: auto 0;
+  width: 25px;
 }
 
-.selectorList.essenceSelector .selectorListElement .image img {
-  margin: auto 0;
-}
-
-.selectorList.essenceSelector .selectorListElement .label {
-  width:100%;
-  margin: auto 0;
-  text-align: center;
+.modLine .modLevel {
+  flex: 0 0 auto;
+  width: 25px;
 }
 
 .newBaseItemList .selectorPopupButton .label {
@@ -400,9 +270,6 @@ body {
   margin: 7px;
 }
 
-.craftingButtonContainer {
-}
-
 .craftingButton {
   background-color: #e8e8e8;
   border-color: #ffffff;
@@ -412,7 +279,7 @@ body {
   height : 45px;
 }
 
-.craftingButton[selectedformodlist="true"] {
+.craftingButton[itemselected="true"] {
   border-color: wheat;
   background-color: wheat;
 }
@@ -576,14 +443,6 @@ body {
   color: #88f;
 }
 
-*.prefix {
-  color: #ec7676;
-}
-
-*.suffix {
-  color: #7aaff1;
-}
-
 .modProb.veryLow {
   color:#bbb;
 }
@@ -602,8 +461,6 @@ body {
 .modProb.guaranteed {
   color:#ff1bff;
 }
-
-.craftedItem
 
 .craftedItem .symbol {
   margin: 0;
@@ -747,8 +604,6 @@ body {
 
 .modList .modLine {
   border-width: 0px;
-  grid-template-columns: 48px 48px auto 80px 78px;  
-  grid-auto-flow: column;
 }
 
 .modLine .tierString, .modGroupLine .tierString {
@@ -807,58 +662,321 @@ body {
   background-color:#222;
 }
 
-.topPanel {
-  position: relative;
-  width: 100%;
-  background: #111;
-  margin: 0px 0px 10px 0px;
+/** REDOOOOOOOOOOOOOOOOOOOOO */
+
+.fullscreen-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
 }
 
-.topPanel .info {
+/** Top panel */
+
+.top-panel {
+  position: relative;
+  height: 60px;
+  background: #111;
+}
+
+.info-panel {
   margin: auto;
   max-width: 1280px;
   text-align: center;
 }
 
-.info.top {
+.info-contents-top {
   font-size: 24px;
   font-family: 'FontinSmallCaps';  
   color: whitesmoke;  
 }
 
-.info.bottom {
+.info-contents-bottom {
   font-size: 20px;
   font-family: 'FontinSmallCaps';  
   color: #ddd;
 }
 
-.topPanel .craftingButtonSection {
-  position: absolute;  
-  width: 450px;
-  height: 50px;
-}
+/** Bottom panel */
 
-.topPanel .infoSection {
-  margin-left: 460px;
-  height: 50px;;
-}
+.bottom-panel {
+  position: absolute;
+  top: 60px;
+  bottom: 0;
+  left: 0;
+  right: 0;
 
-.bottomPanel {
-  position: relative;
   max-width: 1280px;
   margin: 0 auto;
-  z-index: 100;
 }
 
-.bottomPanel .craftedItemContainer {
-  position: absolute;
-  width: 450px;
-  margin: 0 auto;
-  text-align : center;
-  display : flex;
-  flex-direction: column;
+.bottom-contents {
+  height: 100%;
+  display: flex;
+  flex: 1 1 auto;
 }
 
-.bottomPanel .modListContainer {
-  margin-left: 460px;
+/** Bottom-left panel */
+
+.left-contents {
+  min-height: -webkit-min-content;
+  display: flex;
+  height: 100%;
+  width: 40%;
+  min-width: 410px;  
+  flex-grow: 1;
+  overflow: auto;
 }
+
+.crafteditem-container {
+  width: 100%;
+  min-width: 410px;
+}
+
+/** Selection Prompt */
+
+.selection-prompt-container {
+  width: 100%;
+  min-width: 410px;
+}
+
+.selection-prompt-contents {
+  background-color: rgb(17, 17, 17);
+  border: double 3px white;
+}
+
+.selection-prompt-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.selection-prompt-label {
+  font-family: 'FontinSmallCaps';
+  font-size: 18px;  
+  color: whitesmoke;  
+
+  flex-grow: 1;
+  padding: 3px;
+  text-align: center;
+}
+
+.selection-prompt-close {
+  float: right;
+  padding: 3px;
+}
+
+.selection-prompt-close-button {
+  height: 40px;
+}
+
+.selection-prompt-filter-line {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  margin: auto;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.selection-prompt-filter-label {
+  margin: 3px;
+}
+
+.selection-prompt-list-container {
+}
+
+.selection-prompt-list-option {
+  background: rgb(68,68,68);
+  background: linear-gradient(180deg, rgba(68,68,68,1) 0%, rgba(54,54,54,1) 100%);
+  border: solid;  
+  border-top-color: #666;
+  border-bottom-color: #111;
+  border-width: 1px 0px 1px 0px;
+  display: flex;
+  flex-direction: row;
+  flex: 1 1 auto;
+}
+
+.selection-prompt-list-option:hover {
+  background: rgb(80,80,80);
+  background: linear-gradient(180deg, rgba(80,80,80,1) 0%, rgba(68,68,68,1) 100%);
+}
+
+.selection-prompt-list-option[selection-selected] {
+  border-top-color: rgb(255, 196, 0);
+  background: rgb(68,68,68);
+  background: linear-gradient(180deg, rgb(165, 107, 0) 0%, rgb(88, 43, 0) 100%);
+}
+
+.selection-prompt-list-option[selection-disabled] {
+  background: rgb(68,68,68);
+  background: linear-gradient(180deg, rgb(56, 56, 56) 0%, rgba(54,54,54,1) 100%);
+}
+
+.selection-prompt-list-option[sub-item] {
+  background: rgb(50,50,50);
+  background: linear-gradient(180deg, rgba(50,50,50,1) 0%, rgba(40,40,40,1) 100%);
+  border-top-color: rgb(60,60,60);
+  border-bottom-color: #111;
+}
+
+.selection-prompt-list-option[sub-item]:hover {
+  background: rgb(70,70,70);
+  background: linear-gradient(180deg, rgba(70,70,70,1) 0%, rgba(50,50,50,1) 100%);
+}
+
+.selection-prompt-list-option[sub-item][selection-selected] {
+  border-top-color: rgb(189, 145, 0);
+  background: rgb(68,68,68);
+  background: linear-gradient(180deg, rgb(134, 87, 0) 0%, rgb(88, 43, 0) 100%);
+}
+
+.selection-prompt-list-option[selection-disabled] {
+  background: rgb(68,68,68);
+  background: linear-gradient(180deg, rgb(56, 56, 56) 0%, rgba(54,54,54,1) 100%);
+}
+
+.selection-prompt-list-option[selection-disabled] * {
+  color: grey;
+}
+
+.selection-prompt-list-expander {
+  color: whitesmoke;
+  width: 32px;
+  flex-shrink: 0;
+  margin: auto;
+  text-align: center;
+}
+
+.selection-prompt-list-label {
+  color: whitesmoke;
+  font-family: 'FontinSmallCaps';
+  font-size: 16px;
+  text-shadow: 1px 1px #000000;
+
+  text-align: center;
+  flex-grow: 1;
+}
+
+.selection-prompt-list-option.bench {
+  padding: 3px;
+  min-height: 40px;
+}
+
+.selection-prompt-list-option.bench .selection-prompt-list-label{
+  font-size: 16px;
+  font-size-adjust: auto;
+}
+
+.selection-prompt-list-option.bench .selection-prompt-list-info{
+  font-family: 'FontinSmallCaps';
+  font-size: 16px;    
+  color: #ccc;
+  min-width: 15px;
+  flex-grow: 0;
+  flex-shrink: 1;
+  margin: auto 4px;
+}
+
+.selection-prompt-list-option.bench .selection-prompt-list-info.prefix{
+  color: #ec7676;
+}
+
+.selection-prompt-list-option.bench .selection-prompt-list-info.suffix{
+  color: #7aaff1;
+}
+
+.selection-prompt-list-option.essence .selection-prompt-list-image{
+  width: 48px;
+  height: 48px;
+  flex-grow: 0;
+  flex-shrink: 1;
+  margin: auto;
+}
+
+.selection-prompt-list-option.exalted .selection-prompt-list-image{
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  flex-grow: 0;
+  flex-shrink: 1;
+  margin: auto 2px;
+}
+
+.selection-prompt-list-label.exalted {
+  flex-shrink: 1;
+  margin: 2px 50px 2px 50px;
+}
+
+.selection-prompt-list-option.fossil {
+  padding: 3px;
+  height: 60px;
+}
+
+.selection-prompt-list-option.fossil .selection-prompt-list-image{
+  width: 48px;
+  height: 48px;
+  flex-grow: 0;
+  flex-shrink: 1;
+  margin: auto;
+}
+
+.fossil-name{
+  color: #fcce6a;
+}
+
+.essence-name{
+  color: #ffa8eb;
+}
+
+.shaper-name {
+  color: #ca8aff;
+}
+
+.elder-name {
+  color: #aba7ff;
+}
+
+.crusader-name {
+  color: #ffbebe;
+}
+
+.redeemer-name {
+  color: #b8d8fd;
+}
+
+.hunter-name {
+  color: #b6ffaf;
+}
+
+.warlord-name {
+  color: #fff3b0;
+}
+
+*.prefix {
+  color: #ec7676;
+}
+
+*.suffix {
+  color: #7aaff1;
+}
+
+/** Bottom-right panel */
+
+.right-contents {
+  min-height: -webkit-min-content;
+  display: flex;
+  height: 100%;
+  width: 60%;
+  
+  flex-grow: 1;
+  overflow: auto;  
+}
+
+.modlist-container {
+  width: 100%;
+}
+
