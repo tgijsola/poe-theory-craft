@@ -2000,7 +2000,7 @@ function CraftingButton(props) {
             onContextMenu={props.onRightClick}
             disabled={!props.enabled} 
             aria-label={props.itemTooltip} 
-            data-balloon-pos="down" 
+            data-balloon-pos={props.balloonPos ? props.balloonPos : "down"}
             data-balloon-nofocus left={props.left} 
             right={props.right}
           >
@@ -2372,7 +2372,7 @@ class TheoryCrafter extends React.Component {
     );
   }
 
-  RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction = null, dropdownEnabled = true) {
+  RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction = null, dropdownEnabled = true, tooltipBalloonPos = null) {
     const buttonOnClick = () => this.performAction(actionName, this.getItemState());
     const buttonOnRightClick = (e) => this.selectActionForModList(e, actionName);
     const actionSplit = actionName.split(' ');
@@ -2383,6 +2383,7 @@ class TheoryCrafter extends React.Component {
     const craftingButtons = [<CraftingButton 
       itemUrl={itemUrl}
       itemTooltip={itemTooltip}
+      balloonPos={tooltipBalloonPos}
       onClick={buttonOnClick} 
       onRightClick={buttonOnRightClick}
       enabled={isEnabled} 
@@ -2408,7 +2409,7 @@ class TheoryCrafter extends React.Component {
     return craftingButtons;
   }
 
-  RenderCraftingButton(actionName, label, currencyId, dropdownAction = null, dropdownEnabled = true) {
+  RenderCraftingButton(actionName, label, currencyId, dropdownAction = null, dropdownEnabled = true, tooltipBalloonPos = null) {
     const buttonOnClick = () => this.performAction(actionName, this.getItemState());
     const isEnabled = this.canPerformAction(actionName, this.getItemState());
 
@@ -2420,7 +2421,7 @@ class TheoryCrafter extends React.Component {
   
     const itemUrl = GetItemImageUrl(currencyId);
     let itemTooltip = baseItem.name;
-    return this.RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction, dropdownEnabled);
+    return this.RenderCraftingButtonManual(actionName, label, itemUrl, itemTooltip, dropdownAction, dropdownEnabled, tooltipBalloonPos);
   }
 
   RenderCraftingPanel() {
@@ -2433,22 +2434,22 @@ class TheoryCrafter extends React.Component {
       <div className="craftingButtonSection" key="craftingButtonSection">
         <div className="craftingButtonLine" key="craftingButtonLine1">
           {[
-            this.RenderCraftingButton("transmute", "Transmutation", "Metadata/Items/Currency/CurrencyUpgradeToMagic"),
-            this.RenderCraftingButton("aug", "Augmentation", "Metadata/Items/Currency/CurrencyAddModToMagic"),
-            this.RenderCraftingButton("alt", "Alteration", "Metadata/Items/Currency/CurrencyRerollMagic"),
-            this.RenderCraftingButton("regal", "Regal", "Metadata/Items/Currency/CurrencyUpgradeMagicToRare"),
-            this.RenderCraftingButton("alch", "Alchemy", "Metadata/Items/Currency/CurrencyUpgradeToRare"),
-            this.RenderCraftingButton("chaos", "Chaos", "Metadata/Items/Currency/CurrencyRerollRare"),
-            this.RenderCraftingButton("exalt", "Exalted", "Metadata/Items/Currency/CurrencyAddModToRare"),
+            this.RenderCraftingButton("transmute", "Transmutation", "Metadata/Items/Currency/CurrencyUpgradeToMagic", null, null, "up"),
+            this.RenderCraftingButton("aug", "Augmentation", "Metadata/Items/Currency/CurrencyAddModToMagic", null, null, "up"),
+            this.RenderCraftingButton("alt", "Alteration", "Metadata/Items/Currency/CurrencyRerollMagic", null, null, "up"),
+            this.RenderCraftingButton("regal", "Regal", "Metadata/Items/Currency/CurrencyUpgradeMagicToRare", null, null, "up"),
+            this.RenderCraftingButton("alch", "Alchemy", "Metadata/Items/Currency/CurrencyUpgradeToRare", null, null, "up"),
+            this.RenderCraftingButton("chaos", "Chaos", "Metadata/Items/Currency/CurrencyRerollRare", null, null, "up"),
+            this.RenderCraftingButton("exalt", "Exalted", "Metadata/Items/Currency/CurrencyAddModToRare", null, null, "up"),
             this.RenderInfluencedExaltCraftingButton(),
           ]}
         </div>
         <div className="craftingButtonLine" key="craftingButtonLine2">
           {[
-            this.RenderCraftingButton("scour", "Scour", "Metadata/Items/Currency/CurrencyConvertToNormal"),
-            this.RenderCraftingButton("annul", "Annulment", "Metadata/Items/Currency/CurrencyRemoveMod"),
-            this.RenderCraftingButton("bless", "Blessed", "Metadata/Items/Currency/CurrencyRerollImplicit"),
-            this.RenderCraftingButton("divine", "Divine", "Metadata/Items/Currency/CurrencyModValues"),
+            this.RenderCraftingButton("scour", "Scour", "Metadata/Items/Currency/CurrencyConvertToNormal", null, null, "down"),
+            this.RenderCraftingButton("annul", "Annulment", "Metadata/Items/Currency/CurrencyRemoveMod", null, null, "down"),
+            this.RenderCraftingButton("bless", "Blessed", "Metadata/Items/Currency/CurrencyRerollImplicit", null, null, "down"),
+            this.RenderCraftingButton("divine", "Divine", "Metadata/Items/Currency/CurrencyModValues", null, null, "down"),
             this.RenderCraftingBenchCraftingButton(),
             this.RenderEssenceCraftingButton(),
             this.RenderFossilCraftingButton(),
@@ -2501,7 +2502,7 @@ class TheoryCrafter extends React.Component {
     }
 
     const selectedEssence = essences[selectedEssenceId];
-    return this.RenderCraftingButton("essence " + selectedEssenceId, selectedEssence, selectedEssenceId, () => { this.showPanel(this.LeftPanelView.EssenceSelector) }, dropdownEnabled);
+    return this.RenderCraftingButton("essence " + selectedEssenceId, selectedEssence, selectedEssenceId, () => { this.showPanel(this.LeftPanelView.EssenceSelector) }, dropdownEnabled, "down");
   }
 
   RenderCraftingBenchCraftingButton() {
@@ -2523,7 +2524,7 @@ class TheoryCrafter extends React.Component {
       }
     }    
     let selectedBenchModId = this.state.selectedBenchModId;
-    return this.RenderCraftingButtonManual(["bench", selectedBenchModId].join(" "), "Crafting Bench", "", "Crafting Bench", () => { this.showPanel(this.LeftPanelView.BenchSelector) }, dropdownEnabled);
+    return this.RenderCraftingButtonManual(["bench", selectedBenchModId].join(" "), "Crafting Bench", "", "Crafting Bench", () => { this.showPanel(this.LeftPanelView.BenchSelector) }, dropdownEnabled, "down");
   }
 
   RenderFossilCraftingButton() {
@@ -2540,7 +2541,8 @@ class TheoryCrafter extends React.Component {
       "https://web.poecdn.com/image/Art/2DItems/Currency/Delve/Reroll2x2C.png", 
       "Fossil", 
       () => { this.showPanel(this.LeftPanelView.FossilSelector) },
-      dropdownEnabled
+      dropdownEnabled,
+      "down"
     );
   }
 
@@ -2565,7 +2567,7 @@ class TheoryCrafter extends React.Component {
       }
     }
 
-    return this.RenderCraftingButton("exalt_inf " + this.state.selectedInfluenceExalt, itemName, itemId, () => { this.showPanel(this.LeftPanelView.InfluenceExaltSelector) }, dropdownEnabled);
+    return this.RenderCraftingButton("exalt_inf " + this.state.selectedInfluenceExalt, itemName, itemId, () => { this.showPanel(this.LeftPanelView.InfluenceExaltSelector) }, dropdownEnabled, "up");
   }
 
   GetAllowedBasesForNewBasePopup() {
@@ -3407,10 +3409,20 @@ class TheoryCrafter extends React.Component {
     if (!selectedAction || (!this.canPerformAction([selectedAction, ...this.getAdditionalActionParametersForModList(selectedAction)].join(" "), this.getItemState()))) {
       const rarity = this.getItemState().rarity;
       if (rarity === "normal") {
-        return "transmute";
+        if (CanBaseItemHaveRarity(this.getItemState().baseItemId, "magic")) {
+          return "transmute";
+        }
+        else {
+          return "scour";
+        }
       }
       if (rarity === "magic") {
-        return "regal";
+        if (CanBaseItemHaveRarity(this.getItemState().baseItemId, "rare")) {
+          return "regal";
+        }
+        else {
+          return "aug";
+        }
       }
       if (rarity === "rare") {
         return "exalt";
