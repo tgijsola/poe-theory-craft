@@ -602,6 +602,7 @@ function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
   const ignoreRequiredLevel = ("ignoreRequiredLevel" in extendedParameters) ? extendedParameters.ignoreRequiredLevel : false;
   const addedMods = ("addedMods" in extendedParameters) ? extendedParameters.addedMods : null;
   const forcedModIds = ("forcedModIds" in extendedParameters) ? extendedParameters.forcedModIds : null;
+  const forcedModBaseWeights = ("forcedModBaseWeights" in extendedParameters) ? extendedParameters.forcedModBaseWeights : null;
   const itemLevelOverride = ("itemLevelOverride" in extendedParameters) ? extendedParameters.itemLevelOverride : null;
 
   const hasPrefixSlots = ignoreAffixLimits || (GetPrefixLimitForRarity(itemState.baseItemId, rarity) > GetPrefixCount(itemState, context));
@@ -677,7 +678,7 @@ function GetValidModsAndWeightsForItem(itemState, context, extendedParameters) {
       }
     }
 
-    let spawnWeight = GetSpawnWeightForMod(modId, tags, context);
+    let spawnWeight = forcedModBaseWeights ? forcedModBaseWeights : GetSpawnWeightForMod(modId, tags, context);
     if (!ignoreSpawnWeight && spawnWeight <= 0) {
       continue;
     }
@@ -1813,10 +1814,15 @@ function GetRollsForFossil(itemState, context) {
 
     for (const corruptedEssenceChance of weightParameters.corruptedEssenceChances) {
       modRolls.push({...ModRollInfo, 
-        weightParameters : { ignoreAffixLimits : true, ignoreSpawnWeight : true, forcedModIds : [...essenceModIds] },
+        weightParameters : { 
+          ignoreAffixLimits : true, 
+          forcedModIds : [...essenceModIds], 
+          forcedModBaseWeights : 2000,
+          negativeWeightMultipliers : {...weightParameters.negativeWeightMultipliers},
+          positiveWeightMultipliers : {...weightParameters.positiveWeightMultipliers},
+        },
         rollSelectionChance : (corruptedEssenceChance / 100.0),
-        forceWeights : 100,
-        rollsLucky : weightParameters.rollsLucky,           
+        rollsLucky : weightParameters.rollsLucky,
         modType : "affix",
         label : corruptedEssenceChance === 100 ? "Glyphic Fossil (100% Chance)" : "Tangled Fossil (10% Chance)"
       });
@@ -1906,12 +1912,11 @@ function GetEssenceActionInfo(itemState, context, essenceId) {
       { ...ModRollInfo, 
         weightParameters : { 
           forcedModIds : [modToApply], 
-          ignoreSpawnWeight : true, 
+          forcedModBaseWeights : 2000,
           ignoreRequiredLevel : true,
         }, 
         modType : "affix", 
-        label : essence.name, 
-        forceWeights : 100
+        label : essence.name
       },
       { ...ModRollInfo, 
         weightParameters : {
@@ -1967,7 +1972,7 @@ function GetCraftingBenchActionInfo(itemState, context, modId) {
           forcedModIds : [ modId ], 
           ignoreSpawnWeight : true,
         },
-        forceWeights : 100,        
+        forceWeights : 1000,
         label : "Crafting Bench",
       },
       { // Dummy group so mod list shows remaining mod pool after application
