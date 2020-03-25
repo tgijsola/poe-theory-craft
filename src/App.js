@@ -3404,13 +3404,17 @@ class TheoryCrafter extends React.Component {
   selectActionForModList(e, actionName) {
     e.preventDefault();
     const splitActionName = actionName.split(' ')[0];
+    console.log("-- actionName: " + actionName + ", splitActionName: " + splitActionName);
     if (splitActionName in this.getActionInfoMap && this.getActionInfoMap[splitActionName]) {
+      console.log("-- selectedActionForModList: " + this.state.selectedActionForModList + ", new: " + (splitActionName === this.state.selectedActionForModList ? "" : splitActionName));
+      console.log("actionName: " + actionName + ", splitActionName: " + splitActionName);
       this.setState({...this.state, selectedActionForModList : (splitActionName === this.state.selectedActionForModList ? "" : splitActionName)});
     }
   }
 
   getSelectedActionForModList() {
     let selectedAction = (this.state.popupActionForModList || this.state.selectedActionForModList);
+    console.log("popupActionForModList: " + this.state.popupActionForModList + ", " + "selectedAction: " + selectedAction + ", cant perform: " + (!selectedAction || (!this.canPerformAction([selectedAction, ...this.getAdditionalActionParametersForModList(selectedAction)].join(" "), this.getItemState()))));
     if (!selectedAction || (!this.canPerformAction([selectedAction, ...this.getAdditionalActionParametersForModList(selectedAction)].join(" "), this.getItemState()))) {
       const rarity = this.getItemState().rarity;
       if (rarity === "normal") {
@@ -3473,32 +3477,12 @@ class TheoryCrafter extends React.Component {
     this.setState({ ...this.state, newBaseSelectorShown : !this.state.newBaseSelectorShown});
   }
 
-  toggleInfluencedExaltSelector() {
-    let newState = { ...this.state, influencedExaltPopupShown : !this.state.influencedExaltPopupShown };
-    if (newState.influencedExaltPopupShown)
-    { 
-      if (CanExaltedWithInfluenceItem(this.getItemState(), this.theoryCrafterContext, newState.selectedInfluenceExalt)) {
-        newState.popupActionForModList = "exalt_inf";
-      }
-      else {
-        newState.popupActionForModList = "";
-      }
-    }
-    else {
-      newState.popupActionForModList = "";
-      if (CanExaltedWithInfluenceItem(this.getItemState(), this.theoryCrafterContext, newState.selectedInfluenceExalt)) {
-        newState.selectedActionForModList = "exalt_inf";
-      }
-    }
-    this.setState(newState);
-  }
-
   showPanel(newPanel) {
     this.setState({ ...this.state, leftPanelView : newPanel});
   }
 
   hidePanel() {
-    this.setState({ ...this.state, leftPanelView : this.LeftPanelView.CraftedItem});
+    this.setState({ ...this.state, leftPanelView : this.LeftPanelView.CraftedItem, popupActionForModList : ""});
   }
 
   render() {
@@ -3510,7 +3494,7 @@ class TheoryCrafter extends React.Component {
                 Path of Exile "Come On And Slam" Crafter
               </div>
               <div className="info-contents-bottom" key="info-bottom">
-                v0.1 - by @jsola
+                v0.1 - poe 3.10 - by @jsola
               </div>
             </div>
           </div>
